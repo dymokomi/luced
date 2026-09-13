@@ -29,7 +29,7 @@ Every build uses the native compiler and leaves only requested artifacts.
 - [x] Test document edits, Unicode boundaries, syntax, file persistence and commands.
 - [x] Run portable UI/interop regressions and native rendering/input smoke checks.
 - [x] Build and inspect the running editor, including its clean output directory.
-- [ ] Document setup, controls and proof-of-concept limits; commit coherent changes
+- [x] Document setup, controls and proof-of-concept limits; commit coherent changes
   promptly and publish the finished sources.
 
 ## Typography
