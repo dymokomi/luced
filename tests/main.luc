@@ -4,11 +4,17 @@ from workspace.document import Document
 from workspace.explorer import Explorer
 from commands.runner import Runner
 import language.syntax as syntax
+from language.highlighter import Highlighter
+from gpu import Color
+from ui import Highlight
+import ui
 import workspace.paths as paths
 import files
 import thread
 
 pub func main(arguments: list[str]) -> int!:
+    highlighting()
+    randomized_highlighting()
     let root = arguments[0]
     let source = paths.join(root, "main.luc")
     let original = "pub func main(arguments: list[str]) -> int!:\r\n    print(\"hello from luced\")\r\n    return 0\r\n"
@@ -38,7 +44,7 @@ pub func main(arguments: list[str]) -> int!:
     assert(not mixed.dirty())
     mixed.save()
     assert(files.read_text(mixed_path) == "one\r\ntwo\n")
-    let spans = syntax.highlights("# λ\nlet text = \"é😀\"\nlet number = 0xff\n")
+    let spans = syntax.tokenize("# λ\nlet text = \"é😀\"\nlet number = 0xff\n").tokens
     assert(spans.length == 5)
     assert(spans[0].start == 0 and spans[0].end == 3)
     assert(spans[1].start == 4 and spans[1].end == 7)
@@ -79,3 +85,86 @@ pub func main(arguments: list[str]) -> int!:
     assert(paths.parent("/work") == "/")
     print("PASS luced source highlighting, document persistence, conflicts, workspace and native build/run")
     return 0
+
+func highlighting() -> unit!:
+    var text = ""
+    for index in 0..<1000:
+        text += "let value = 123 # λ\n"
+    let editor = TextEditor(text)
+    let service = Highlighter(editor)
+    service.update()
+    assert(service.scanned_lines == 1000)
+    let connection = editor.on_change(service.update)
+    editor.set_selection(12, 15)
+    editor.insert("4567")
+    assert(service.scanned_lines == 1)
+    assert(editor.highlight_at(0) != none and editor.highlight_at(21) != none)
+    let revision = editor.version()
+    editor.undo()
+    assert(service.scanned_lines == 1 and editor.text() == text)
+    assert(not editor.update_highlights(0, 3, [Highlight(0, 3, Color())], revision))
+    editor.redo()
+    assert(service.scanned_lines == 1)
+    editor.set_selection(0, 0)
+    editor.insert("# 😀\n# é\n")
+    assert(service.scanned_lines <= 3)
+    editor.set_selection(0, 8)
+    editor.insert("")
+    compare_highlighting(editor)
+    editor.set_text("let a = \"\"\"open\nlet inside = 1\nend\"\"\"\nlet outside = 2\n")
+    assert(service.scanned_lines == 4)
+    editor.set_selection(8, 11)
+    editor.insert("")
+    assert(service.scanned_lines == 4)
+    compare_highlighting(editor)
+    editor.undo()
+    compare_highlighting(editor)
+    editor.set_selection(editor.length(), editor.length())
+    editor.insert("let tail = 4")
+    compare_highlighting(editor)
+    connection.disconnect()
+
+func compare_highlighting(editor: TextEditor) -> unit!:
+    let fresh = TextEditor(editor.text())
+    let highlighter = Highlighter(fresh)
+    highlighter.update()
+    for offset in 0..<editor.length():
+        let current = editor.highlight_at(offset)
+        let expected = fresh.highlight_at(offset)
+        assert((current == none) == (expected == none))
+        if let actual = current:
+            let wanted = expected else error(ui.invalid, "missing expected highlight")
+            assert(actual.red == wanted.red and actual.green == wanted.green and actual.blue == wanted.blue)
+
+func randomized_highlighting() -> unit!:
+    let editor = TextEditor("let text = r\"\"\"raw\nλ\nend\"\"\"\nprint(text)\n")
+    let service = Highlighter(editor)
+    service.update()
+    let connection = editor.on_change(service.update)
+    let insertions = ["", "#", "\n", "\"", "\"\"\"", "\\", "é😀", "r\"", "let x = 0xff\n", "'a'"]
+    var seed = 17
+    for iteration in 0..<200:
+        seed = (seed * 48271) % 2147483647
+        let start = seed % (editor.length() + 1)
+        seed = (seed * 48271) % 2147483647
+        let count = seed % 5
+        let end = start + count if start + count < editor.length() else editor.length()
+        editor.set_selection(start, end)
+        editor.insert(insertions[seed % insertions.length])
+        compare_highlighting(editor)
+        if iteration % 7 == 0:
+            editor.undo()
+            compare_highlighting(editor)
+            editor.redo()
+            compare_highlighting(editor)
+    connection.disconnect()
+    # A consumer may publish later or fail. Unaffected ranges remain colored in
+    # their new positions even when no highlighter is connected to the widget.
+    editor.set_text("let x = 1\nlet y = 2")
+    editor.set_highlights([Highlight(10, 13, Color(0.3, 0.5, 0.7))])
+    editor.set_selection(0, 0)
+    editor.insert("# 😀\n")
+    assert(editor.highlight_at(14) != none and editor.highlight_at(10) == none)
+    let version = editor.version()
+    editor.insert("")
+    assert(editor.version() == version)

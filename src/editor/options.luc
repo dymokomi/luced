@@ -1,0 +1,36 @@
+## Command-line policy is separate from view construction and session lifetime.
+import files
+import ui
+
+pub class Options:
+    pub var help: bool = false
+    pub var smoke: bool = false
+    pub var location: str = "."
+    pub var luce: str = "luce"
+    pub var base: str = "luce-base"
+
+    pub func init(self, arguments: list[str]) -> unit!:
+        var index = 0
+        while index < arguments.length:
+            let argument = arguments[index]
+            if argument == "--help":
+                self.help = true
+            elif argument == "--smoke":
+                self.smoke = true
+            elif argument == "--luce" or argument == "--base":
+                index += 1
+                if index >= arguments.length:
+                    error(ui.invalid, argument + " needs a compiler path")
+                let compiler = files.absolute_path(arguments[index])
+                if argument == "--luce":
+                    self.luce = compiler
+                else:
+                    self.base = compiler
+            elif argument.starts_with("--"):
+                error(ui.invalid, "Unknown option: " + argument)
+            else:
+                self.location = argument
+            index += 1
+
+    pub func print_help(self):
+        print("usage: luced [FILE | DIRECTORY] [--luce COMPILER] [--base COMPILER] [--smoke]")

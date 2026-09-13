@@ -1,6 +1,8 @@
 ## Each open file owns its editor, so switching files preserves text, selection,
 ## scroll position and undo history. Disk conflict checks precede atomic saves.
 from ui import Font, TextEditor
+from language.highlighter import Highlighter
+from interop import Connection
 import files
 import ui
 
@@ -10,6 +12,7 @@ pub class Document:
     var original: str
     var baseline: str
     let crlf: bool
+    let highlighting: Connection?
 
     pub func init(self, path: str, font: Font? = none) -> unit!:
         let text = files.read_text(path)
@@ -19,6 +22,12 @@ pub class Document:
         let editor = TextEditor(text, font = font)
         self.editor = editor
         self.baseline = editor.text()
+        var highlighting: Connection? = none
+        if path.ends_with(".luc") or path.ends_with(".lucb"):
+            let highlighter = Highlighter(editor)
+            highlighter.update()
+            highlighting = editor.on_change(highlighter.update)
+        self.highlighting = highlighting
 
     pub func dirty(self) -> bool!:
         return self.editor.text() != self.baseline

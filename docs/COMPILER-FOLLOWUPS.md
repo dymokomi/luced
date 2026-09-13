@@ -3,7 +3,7 @@
 - Native value constructors such as `gpu.Color(...)` are accepted in top-level
   Luce constants, but their generated boundary adapter is a function call, which
   Base correctly rejects as a constant initializer. The editor creates its palette
-  in the highlighting function. The compiler should either emit a valid constant
+  in the syntax theme. The compiler should either emit a valid constant
   representation or diagnose unsupported native initialization at the Luce source.
   Reproduce: `from gpu import Color` followed by a top-level
   `let accent = Color(0.2, 0.4, 0.8)` and a main that reads it.

@@ -4,7 +4,7 @@ A small native code editor written in **Luce**, built with the **luce-ui** Base
 library. It has a file explorer, editable monospace source pane, Luce/Luce Base
 syntax highlighting, and a compiler/program output pane.
 
-![luced running the example through its native compiler](docs/preview.png)
+![luced with compact controls and named view composition](docs/preview.png)
 
 Open files retain their own selection, scrolling, unsaved edits and undo history.
 Saves replace files atomically, preserve existing permissions and CRLF line
@@ -42,27 +42,28 @@ program binaries under the nearest package's `build/` directory.
 | --- | --- |
 | Open a file or directory | Click its explorer row; arrows and Enter also work |
 | Save current file | Save, Cmd/Ctrl+S |
-| Save all open files | Save all |
+| Save all open files | File menu, Cmd/Ctrl+Shift+S |
 | Build current source | Build, Cmd/Ctrl+B |
-| Build and run current source | Run, F5, Cmd/Ctrl+Enter |
-| Cancel compiler or program | Stop |
+| Build and run current source | Run, F5 |
+| Cancel compiler or program | Stop, Shift+F5 |
 | Indent / outdent | Tab / Shift+Tab |
 | Undo / redo | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z; Ctrl+Y also works |
 | Move focus out of the editor | Ctrl+Tab |
 | Scroll | Wheel or touchpad; editor scrollbar also drags |
 
 Closing with unsaved files keeps the window open and shows a status message.
-Save all before closing again, or choose **Discard & close** after that message.
+Save all before closing again, or choose **File → Discard & close** after that message.
 Build and Run save open documents first and compile the selected source as the
 entry point. There is no shell expansion or implicit project task configuration.
 
 ## Structure and tests
 
 - `src/workspace`: files, documents, navigation and application coordination.
-- `src/language`: a tolerant source lexer producing scalar highlight ranges.
+- `src/language`: a stateful line lexer, incremental highlighting cache and syntax palette.
+- `src/editor`: options, shared actions, named pane views and application lifetime.
 - `src/commands`: asynchronous compiler/program orchestration.
-- `src/main.luc`: composition of the native controls.
-- `luce-ui`: reusable text editor, list view, input, layout and drawing.
+- `src/main.luc`: parse options, construct the editor, run.
+- `luce-ui`: reusable actions, toolbars, menus, themes, text controls and layout.
 - Base standard library: native text input, clipboard, files and process resources.
 
 ```sh
@@ -72,7 +73,8 @@ python3 tests/run.py
 python3 tools/preview.py --source examples/hello/main.luc
 ```
 
-Tests cover Unicode highlighting offsets, editing and undo, CRLF persistence,
+Tests cover bounded line retokenization, randomized Unicode edits and full-lexer
+equivalence, multiline strings, undo/redo, stale decorations, CRLF persistence,
 external-file conflicts, workspace focus, and real native build/run output.
 The UI and standard-library repositories have their own control, ownership,
 input, pixel, file and process regression suites. CI runs on all three hosts.
@@ -86,3 +88,18 @@ resizable splitters, search, completion, debugging and language-server integrati
 remain future work. Files are bounded to 4 MiB on read and 1,048,576 editor
 scalars; 32 documents may remain open. See [the checklist](docs/PLAN.md) and
 [compiler follow-ups](docs/COMPILER-FOLLOWUPS.md).
+
+## Framework iteration
+
+Chrome uses one font line per row and one character cell of control inset.
+Colors and density come from luce-ui's inherited Theme; menus, buttons and
+shortcuts share Action instances. Popup placement and focus belong to the
+framework. The editor's named views are in `src/editor/views.luc`.
+
+Highlighting runs from the affected line until cached multiline state converges.
+It publishes only that interval synchronously, with a revision check. Existing
+highlights are transformed through the edit, so there is no uncolored debounce
+frame. A 1,000-line regression checks that an ordinary edit scans one line.
+
+The [design and checklist](docs/UI-FRAMEWORK.md) records the framework contracts
+and the Qt, SwiftUI, VS Code, Vim and Emacs references behind them.

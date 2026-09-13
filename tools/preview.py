@@ -12,6 +12,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--base', type=Path, default=ROOT.parent / 'luce-base/build/luce-base')
 p.add_argument('--luce', type=Path, default=ROOT.parent / 'luce/build/luce')
 p.add_argument('--source', type=Path, default=ROOT / 'src/main.luc')
+p.add_argument('--menu', action='store_true', help='capture the File popup through keyboard input')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
 a = p.parse_args()
@@ -61,23 +62,33 @@ pub func save(path: str) -> !:
 '''
     (work / 'src/probe.lucb').write_text(native)
     main = work / 'src/main.luc'
-    source = main.read_text()
-    source = 'import probe\n' + source
-    source = source.replace('    app.run(frame_limit = 12 if smoke else 0)', '''    var frames = 0
+    # Construct the public application component directly. The capture harness
+    # no longer depends on variable names or source replacement in main.luc.
+    source = """import probe
+from editor.application import Editor
+from editor.options import Options
+pub func main(arguments: list[str]) -> int!:
+    let editor = Editor(Options(arguments))
+    var frames = 0
     var captured = false
-    let observed = app.on_frame(func (elapsed: float):
+    let observed = editor.app.on_frame(func (elapsed: float) -> unit!:
         frames += 1
         if captured:
-            app.stop()
-        elif frames >= 12 and not runner.busy():
+            editor.app.stop()
+        elif frames >= 12 and not editor.runner.busy():
             probe.begin("luced")
             captured = true)
-    app.run()
-    observed.disconnect()
-    probe.save(''' + json.dumps(str(a.output.resolve())) + ''')
-    probe.end()''')
+"""
+    if a.menu:
+        source = 'from ui import Event\nfrom input import EventKind, Key\n' + source
+        source = source.replace('        if captured:', '''        if frames == 10:
+            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.tab, control = true))
+            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.tab, control = true))
+            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.down))
+        if captured:''')
     if a.run:
-        source = source.replace('    var frames = 0', '    workspace.run()\n    var frames = 0')
+        source += '    editor.workspace.run()\n'
+    source += '    editor.app.run()\n    observed.disconnect()\n    probe.save(' + json.dumps(str(a.output.resolve())) + ')\n    probe.end()\n    editor.close()\n    return 0\n'
     main.write_text(source)
     binary = work / 'preview'
     subprocess.run([str(a.luce.resolve()), 'build', str(main), '--native', '-o', str(binary)], check=True, env=dict(os.environ, LUCE_BASE=str(a.base.resolve())), timeout=180)

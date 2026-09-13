@@ -1,0 +1,87 @@
+## A document-local line cache. The editor publishes an edit before emitting its
+## change signal, so analysis and decoration publication finish before drawing.
+from ui import TextEditor, Highlight
+from language.syntax import tokenize
+from gpu import Color
+
+class Line:
+    pub let start: int
+    pub let end: int
+    pub let state: str
+    pub func init(self, start: int, end: int, state: str):
+        self.start = start
+        self.end = end
+        self.state = state
+
+pub class SyntaxTheme:
+    pub func color(self, kind: str) -> Color:
+        if kind == "keyword":
+            return Color(0.55, 0.26, 0.65)
+        if kind == "string":
+            return Color(0.39, 0.58, 0.28)
+        if kind == "comment":
+            return Color(0.19, 0.32, 0.31)
+        if kind == "number":
+            return Color(0.72, 0.43, 0.19)
+        if kind == "type":
+            return Color(0.12, 0.54, 0.65)
+        return Color(0.57, 0.64, 0.36)
+
+pub class Highlighter:
+    let editor: TextEditor
+    let theme: SyntaxTheme
+    var lines: list[Line]
+    var version: int = -1
+    pub var scanned_lines: int = 0
+
+    pub func init(self, editor: TextEditor, theme: SyntaxTheme? = none):
+        self.editor = editor
+        let selected = theme else SyntaxTheme()
+        self.theme = selected
+        self.lines = []
+
+    pub func update(self) -> unit!:
+        self.scanned_lines = 0
+        let revision = self.editor.version()
+        if revision == self.version:
+            return
+        let change = self.editor.change()
+        let incremental = self.version >= 0 and change.version == self.version + 1
+        let start = self.editor.line_start(change.start) if incremental else 0
+        let delta = change.new_end - change.old_end
+        var replacement: list[Line] = []
+        var previous = 0
+        var state = ""
+        if incremental:
+            while previous < self.lines.length and self.lines[previous].start < start:
+                let line = self.lines[previous]
+                replacement.append(line)
+                state = line.state
+                previous += 1
+        var offset = start
+        var spans: list[Highlight] = []
+        while true:
+            let end = self.editor.line_end(offset)
+            let finish = end + 1 if end < self.editor.length() else end
+            let parsed = tokenize(self.editor.text_range(offset, finish), state)
+            self.scanned_lines += 1
+            for token in parsed.tokens:
+                spans.append(Highlight(offset + token.start, offset + token.end, self.theme.color(token.kind)))
+            replacement.append(Line(offset, finish, parsed.state))
+            state = parsed.state
+            offset = finish
+            if incremental and offset >= change.new_end:
+                while previous < self.lines.length and self.lines[previous].end + delta <= offset:
+                    previous += 1
+                if previous < self.lines.length and self.lines[previous].start >= change.old_end and self.lines[previous].start + delta == offset:
+                    let incoming = self.lines[previous - 1].state if previous > 0 else ""
+                    if incoming == state:
+                        for index in previous..<self.lines.length:
+                            let line = self.lines[index]
+                            replacement.append(Line(line.start + delta, line.end + delta, line.state))
+                        break
+            if finish == self.editor.length():
+                break
+        if self.editor.update_highlights(start, offset, spans, revision):
+            self.lines = replacement
+            self.version = revision

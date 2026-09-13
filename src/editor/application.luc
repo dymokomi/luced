@@ -1,0 +1,61 @@
+## Session construction, signal ownership and shutdown live together. Views
+## declare structure; Workspace handles documents; Runner owns child processes.
+from ui import Application, Font, Theme
+from interop import Connection
+from editor.options import Options
+from editor.actions import EditorActions
+from editor.views import EditorView
+from workspace.controller import Workspace
+from workspace.explorer import Explorer
+from commands.runner import Runner
+import workspace.paths as paths
+import files
+
+pub class Editor:
+    pub let app: Application
+    pub let workspace: Workspace
+    pub let runner: Runner
+    let actions: EditorActions
+    let options: Options
+    let connections: list[Connection]
+
+    pub func init(self, options: Options) -> unit!:
+        let font = Font(size = 14.0)
+        let absolute = files.absolute_path(options.location)
+        let is_file = files.path_kind(absolute) == files.FileKind.regular
+        let explorer = Explorer(paths.parent(absolute) if is_file else absolute)
+        let actions = EditorActions()
+        let view = EditorView(explorer, actions, font)
+        let app = Application(view.body, title = "luced", width = 1180, height = 800, theme = Theme())
+        let runner = Runner(view.output.output, options.luce, options.base)
+        let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.directory,
+            view.editor.title, view.status, view.editor.host, runner, font)
+        self.app = app
+        self.workspace = workspace
+        self.runner = runner
+        self.actions = actions
+        self.options = options
+        let connections = actions.connect(workspace)
+        connections.append(view.sidebar.listing.on_activate(workspace.activate))
+        connections.append(app.on_frame(self.frame))
+        self.connections = connections
+        app.set_actions(actions.all)
+        app.set_close_handler(workspace.can_close)
+        app.set_error_handler(workspace.report)
+        if is_file:
+            workspace.open(absolute)
+        actions.update(workspace, runner.busy())
+
+    func frame(self, elapsed: float) -> unit!:
+        self.workspace.frame(elapsed)
+        self.actions.update(self.workspace, self.runner.busy())
+
+    pub func run(self) -> unit!:
+        self.app.run(frame_limit = 12 if self.options.smoke else 0)
+
+    pub func close(self):
+        self.app.close()
+        self.workspace.close()
+        for connection in self.connections:
+            connection.disconnect()
+        self.connections.clear()

@@ -1,39 +1,49 @@
 ## A tolerant source lexer for coloring incomplete Luce and Luce Base documents.
 ## Offsets count Unicode scalars, exactly as TextEditor does. Parsing and diagnostics
 ## remain the compiler's responsibility; an unfinished token still gets a color.
-from ui import Highlight
-from gpu import Color
+pub class Token:
+    pub let start: int
+    pub let end: int
+    pub let kind: str
+    pub func init(self, start: int, end: int, kind: str):
+        self.start = start
+        self.end = end
+        self.kind = kind
+
+pub class LineTokens:
+    pub let tokens: list[Token]
+    pub let state: str
+    pub func init(self, tokens: list[Token], state: str):
+        self.tokens = tokens
+        self.state = state
 
 let keywords = "and as break catch class const continue defer elif else enum errdefer extern false for from func if import in init interface is let match mutating new none not or pub recover return self spawn static struct test true try type var wait while with alloc free"
 let types = "int float bool str bytes unit never list map set Error ErrorCode Weak task char i8 i16 i32 i64 u8 u16 u32 u64 usize isize f32 f64 void"
 
-pub func highlights(source: str) -> list[Highlight]:
-    let keyword_color = Color(0.55, 0.26, 0.65)
-    let string_color = Color(0.39, 0.58, 0.28)
-    let comment_color = Color(0.19, 0.32, 0.31)
-    let number_color = Color(0.72, 0.43, 0.19)
-    let type_color = Color(0.12, 0.54, 0.65)
-    let call_color = Color(0.57, 0.64, 0.36)
+## State contains only an unfinished triple-quoted string delimiter and raw flag.
+## Token colors belong to the application theme, never to this lexer.
+pub func tokenize(source: str, incoming: str = "") -> LineTokens:
+    var state = incoming
     # Materialize once: repeated indexed reads from a UTF-8 string would rescan it.
     var characters: list[str] = []
     for character in source:
         characters.append(character)
-    var spans: list[Highlight] = []
+    var spans: list[Token] = []
     var index = 0
     while index < characters.length:
         let start = index
         let character = characters[index]
-        if character == "#":
-            while index < characters.length and characters[index] != "\n":
-                index += 1
-            spans.append(Highlight(start, index, comment_color))
-        elif character == "\"" or character == "'" or (character in ["r", "b", "f"] and index + 1 < characters.length and characters[index + 1] == "\""):
-            let raw = character == "r"
-            if character in ["r", "b", "f"]:
-                index += 1
-            let quote = characters[index]
-            let triple = index + 2 < characters.length and characters[index + 1] == quote and characters[index + 2] == quote
-            index += 3 if triple else 1
+        if state != "" or character == "\"" or character == "'" or (character in ["r", "b", "f"] and index + 1 < characters.length and characters[index + 1] == "\""):
+            var raw = state.starts_with("r") if state != "" else character == "r"
+            var quote = state[1..<2] if state != "" else character
+            var triple = state != ""
+            if state == "":
+                if character in ["r", "b", "f"]:
+                    index += 1
+                quote = characters[index]
+                triple = index + 2 < characters.length and characters[index + 1] == quote and characters[index + 2] == quote
+                index += 3 if triple else 1
+            state = ("r" if raw else "s") + quote if triple else ""
             while index < characters.length:
                 if not raw and characters[index] == "\\":
                     index += 2 if index + 1 < characters.length else 1
@@ -43,13 +53,18 @@ pub func highlights(source: str) -> list[Highlight]:
                         break
                     if index + 2 < characters.length and characters[index + 1] == quote and characters[index + 2] == quote:
                         index += 3
+                        state = ""
                         break
                     index += 1
                 elif not triple and characters[index] == "\n":
                     break
                 else:
                     index += 1
-            spans.append(Highlight(start, index, string_color))
+            spans.append(Token(start, index, "string"))
+        elif character == "#":
+            while index < characters.length and characters[index] != "\n":
+                index += 1
+            spans.append(Token(start, index, "comment"))
         elif digit(character):
             index += 1
             while index < characters.length:
@@ -62,7 +77,7 @@ pub func highlights(source: str) -> list[Highlight]:
                     index += 1
                 else:
                     break
-            spans.append(Highlight(start, index, number_color))
+            spans.append(Token(start, index, "number"))
         elif identifier(character):
             var word = character
             index += 1
@@ -70,18 +85,18 @@ pub func highlights(source: str) -> list[Highlight]:
                 word += characters[index]
                 index += 1
             if (" " + keywords + " ").contains(" " + word + " "):
-                spans.append(Highlight(start, index, keyword_color))
+                spans.append(Token(start, index, "keyword"))
             elif (" " + types + " ").contains(" " + word + " ") or (character >= "A" and character <= "Z"):
-                spans.append(Highlight(start, index, type_color))
+                spans.append(Token(start, index, "type"))
             else:
                 var following = index
                 while following < characters.length and characters[following] in [" ", "\t"]:
                     following += 1
                 if following < characters.length and characters[following] == "(":
-                    spans.append(Highlight(start, index, call_color))
+                    spans.append(Token(start, index, "call"))
         else:
             index += 1
-    return spans
+    return LineTokens(spans, state)
 
 func digit(character: str) -> bool:
     return character >= "0" and character <= "9"

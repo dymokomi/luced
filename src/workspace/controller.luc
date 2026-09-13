@@ -6,7 +6,6 @@ from workspace.document import Document
 from workspace.explorer import Explorer
 from commands.runner import Runner
 import workspace.paths as paths
-import language.syntax as syntax
 import ui
 import files
 
@@ -23,8 +22,6 @@ pub class Workspace:
     var documents: list[Document]
     var connections: list[Connection]
     var active: Document? = none
-    var pending_highlight: bool = false
-    var highlight_delay: float = 0.0
     var status_text: str = ""
     var message_time: float = 0.0
     var close_pending: bool = false
@@ -44,6 +41,9 @@ pub class Workspace:
         self.runner = runner
         self.font = font
 
+    pub func has_document(self) -> bool:
+        return self.active != none
+
     pub func activate(self, index: int) -> unit!:
         self.open_entry(index) catch failure:
             self.report(failure.message)
@@ -55,7 +55,7 @@ pub class Workspace:
         if entry.directory:
             self.explorer.open(entry.path)
             self.listing.set_items(self.explorer.labels())
-            self.directory_label.set_text(paths.short(self.explorer.directory, 18))
+            self.directory_label.set_text(paths.short(self.explorer.directory, 24))
         else:
             self.open(entry.path)
 
@@ -72,20 +72,15 @@ pub class Workspace:
             let document = Document(identity, self.font)
             self.documents.append(document)
             self.connections.append(document.editor.on_change(self.changed))
-            self.connections.append(document.editor.on_command(self.command))
             chosen = document
         let document = chosen else return
         self.active = document
         self.editor_host.set_children([document.editor])
-        self.pending_highlight = true
-        self.highlight_delay = 0.0
         self.title.set_text(paths.short(document.path, 80))
         self.app.focus(document.editor.layout())
         self.close_pending = false
 
     pub func changed(self) -> unit!:
-        self.pending_highlight = true
-        self.highlight_delay = 0.08
         if let document = self.active:
             self.title.set_text(paths.short(document.path, 78) + (" *" if document.dirty() else ""))
 
@@ -165,13 +160,6 @@ pub class Workspace:
 
     func tick(self, elapsed: float) -> unit!:
         self.runner.poll()
-        if self.pending_highlight:
-            self.highlight_delay -= elapsed
-            if self.highlight_delay <= 0.0:
-                self.pending_highlight = false
-                if let document = self.active:
-                    if document.path.ends_with(".luc") or document.path.ends_with(".lucb"):
-                        document.editor.set_highlights(syntax.highlights(document.editor.text()))
         self.message_time -= elapsed
         if self.close_pending or self.message_time > 0.0:
             return
