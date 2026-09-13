@@ -12,6 +12,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--base', type=Path, default=ROOT.parent / 'luce-base/build/luce-base')
 p.add_argument('--luce', type=Path, default=ROOT.parent / 'luce/build/luce')
 p.add_argument('--source', type=Path, default=ROOT / 'src/main.luc')
+p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
 a = p.parse_args()
 a.output.resolve().parent.mkdir(parents=True, exist_ok=True)
@@ -63,16 +64,22 @@ pub func save(path: str) -> !:
     source = main.read_text()
     source = 'import probe\n' + source
     source = source.replace('    app.run(frame_limit = 12 if smoke else 0)', '''    var frames = 0
+    var captured = false
     let observed = app.on_frame(func (elapsed: float):
         frames += 1
-        if frames == 12:
-            probe.begin("luced"))
-    app.run(frame_limit = 12)
+        if captured:
+            app.stop()
+        elif frames >= 12 and not runner.busy():
+            probe.begin("luced")
+            captured = true)
+    app.run()
     observed.disconnect()
     probe.save(''' + json.dumps(str(a.output.resolve())) + ''')
     probe.end()''')
+    if a.run:
+        source = source.replace('    var frames = 0', '    workspace.run()\n    var frames = 0')
     main.write_text(source)
     binary = work / 'preview'
     subprocess.run([str(a.luce.resolve()), 'build', str(main), '--native', '-o', str(binary)], check=True, env=dict(os.environ, LUCE_BASE=str(a.base.resolve())), timeout=180)
-    subprocess.run([str(binary), str(a.source.resolve()), '--smoke'], check=True, timeout=30)
+    subprocess.run([str(binary), str(a.source.resolve()), '--smoke', '--luce', str(a.luce.resolve()), '--base', str(a.base.resolve())], check=True, timeout=30)
 print(a.output.resolve())

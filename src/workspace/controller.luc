@@ -8,6 +8,7 @@ from commands.runner import Runner
 import workspace.paths as paths
 import language.syntax as syntax
 import ui
+import files
 
 pub class Workspace:
     let app: Application
@@ -57,15 +58,16 @@ pub class Workspace:
             self.open(entry.path)
 
     pub func open(self, path: str) -> unit!:
+        let identity = files.absolute_path(path)
         var chosen: Document? = none
         for document in self.documents:
-            if document.path == path:
+            if document.path == identity:
                 chosen = document
                 break
         if chosen == none:
             if self.documents.length >= 32:
                 error(ui.invalid, "This workspace already has 32 open files. Save and reopen the editor to start another session.")
-            let document = Document(path)
+            let document = Document(identity)
             self.documents.append(document)
             self.connections.append(document.editor.on_change(self.changed))
             self.connections.append(document.editor.on_command(self.command))

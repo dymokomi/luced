@@ -8,6 +8,7 @@ pub class Document:
     pub let path: str
     pub let editor: TextEditor
     var original: str
+    var baseline: str
     let crlf: bool
 
     pub func init(self, path: str) -> unit!:
@@ -15,10 +16,12 @@ pub class Document:
         self.path = files.absolute_path(path)
         self.original = text
         self.crlf = text.contains("\r\n")
-        self.editor = TextEditor(text)
+        let editor = TextEditor(text)
+        self.editor = editor
+        self.baseline = editor.text()
 
     pub func dirty(self) -> bool!:
-        return self.encoded_text() != self.original
+        return self.editor.text() != self.baseline
 
     func encoded_text(self) -> str!:
         let text = self.editor.text()
@@ -26,9 +29,10 @@ pub class Document:
 
     pub func save(self) -> unit!:
         let text = self.encoded_text()
-        if text == self.original:
+        if not self.dirty():
             return
         if files.read_text(self.path) != self.original:
             error(ui.invalid, "The file changed on disk. Your edits are still open; save a copy before reloading.")
         files.write_text(self.path, text)
         self.original = text
+        self.baseline = self.editor.text()

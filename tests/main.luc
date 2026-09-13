@@ -32,6 +32,12 @@ pub func main(arguments: list[str]) -> int!:
         refused = true
     assert(refused and files.read_text(source) == "changed externally")
     files.write_text(source, original)
+    let mixed_path = paths.join(root, "mixed.txt")
+    files.write_text(mixed_path, "one\r\ntwo\n")
+    let mixed = Document(mixed_path)
+    assert(not mixed.dirty())
+    mixed.save()
+    assert(files.read_text(mixed_path) == "one\r\ntwo\n")
     let spans = syntax.highlights("# λ\nlet text = \"é😀\"\nlet number = 0xff\n")
     assert(spans.length == 5)
     assert(spans[0].start == 0 and spans[0].end == 3)

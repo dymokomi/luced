@@ -15,7 +15,10 @@ pub func main(arguments: list[str]) -> int!:
     var index = 0
     while index < arguments.length:
         let argument = arguments[index]
-        if argument == "--smoke":
+        if argument == "--help":
+            print("usage: luced [FILE | DIRECTORY] [--luce COMPILER] [--base COMPILER] [--smoke]")
+            return 0
+        elif argument == "--smoke":
             smoke = true
         elif argument == "--luce" or argument == "--base":
             index += 1
