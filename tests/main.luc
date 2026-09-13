@@ -13,6 +13,7 @@ import files
 import thread
 
 pub func main(arguments: list[str]) -> int!:
+    language_folding()
     highlighting()
     randomized_highlighting()
     let root = arguments[0]
@@ -21,6 +22,8 @@ pub func main(arguments: list[str]) -> int!:
     files.write_text(source, original)
     let document = Document(source)
     assert(not document.dirty())
+    assert(document.editor.set_folded(1, true) and not document.dirty())
+    document.editor.unfold_all()
     document.editor.set_selection(0, 0)
     document.editor.insert("# edited\n")
     assert(document.dirty())
@@ -126,6 +129,7 @@ func highlighting() -> unit!:
 
 func compare_highlighting(editor: TextEditor) -> unit!:
     let fresh = TextEditor(editor.text())
+    assert(editor.visible_line_count() == fresh.visible_line_count())
     let highlighter = Highlighter(fresh)
     highlighter.update()
     for offset in 0..<editor.length():
@@ -168,3 +172,35 @@ func randomized_highlighting() -> unit!:
     let version = editor.version()
     editor.insert("")
     assert(editor.version() == version)
+
+func language_folding() -> unit!:
+    let source = "pub func outer():\n    if true:\n        print(\"a: # text\")\n    # retained comment\n    print(\"done\")\n\nlet tail = 1\n"
+    let editor = TextEditor(source)
+    let service = Highlighter(editor)
+    service.update()
+    let connection = editor.on_change(service.update)
+    let rows = editor.visible_line_count()
+    assert(editor.set_folded(2, true))
+    assert(editor.set_folded(1, true))
+    assert(editor.visible_line_count() < rows and editor.text() == source)
+    editor.set_selection(editor.length(), editor.length())
+    editor.insert("# unrelated\n")
+    assert(editor.is_folded(1) and editor.is_folded(2))
+    assert(service.scanned_lines == 1)
+    assert(editor.set_folded(1, false) and editor.is_folded(2))
+    editor.set_selection(0, 0)
+    editor.insert("# 😀 before\n")
+    assert(editor.is_folded(3))
+    editor.undo()
+    assert(editor.is_folded(2))
+    editor.set_text("let text = r\"\"\"first\nif false:\n    literal\nend\"\"\"\nlet next = 0\n")
+    assert(editor.set_folded(1, true))
+    assert(not editor.set_folded(2, true))
+    assert(editor.visible_line_count() == 3)
+    editor.unfold_all()
+    assert(editor.visible_line_count() == 6)
+    editor.set_text("# comment:\n    # continuation\nlet text = \"colon:\"\n    let value = 1\n")
+    assert(not editor.set_folded(1, true) and not editor.set_folded(3, true))
+    editor.set_text("pub func empty():\n\nlet next = 0\n")
+    assert(not editor.set_folded(1, true))
+    connection.disconnect()

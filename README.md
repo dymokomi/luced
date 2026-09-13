@@ -2,11 +2,12 @@
 
 A small native code editor written in **Luce**, built with the **luce-ui** Base
 library. It has a file explorer, editable monospace source pane, Luce/Luce Base
-syntax highlighting, and a compiler/program output pane.
+syntax highlighting and folding, and a compiler/program output pane. The three
+panes have themed borders and draggable dividers.
 
 ![luced with compact controls and named view composition](docs/preview.png)
 
-Open files retain their own selection, scrolling, unsaved edits and undo history.
+Open files retain their own selection, scrolling, folds, unsaved edits and undo history.
 Saves replace files atomically, preserve existing permissions and CRLF line
 endings, and refuse to overwrite changes detected on disk. Build and Run use
 cancellable background commands so the UI stays responsive.
@@ -50,6 +51,10 @@ program binaries under the nearest package's `build/` directory.
 | Undo / redo | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z; Ctrl+Y also works |
 | Move focus out of the editor | Ctrl+Tab |
 | Scroll | Wheel or touchpad; editor scrollbar also drags |
+| Resize panes | Drag the explorer/code or code/output divider |
+| Resize with keys | Focus a divider, then arrows; Shift moves faster; Home/End reach limits |
+| Toggle a fold | Click its gutter marker; View menu; Cmd/Ctrl+Alt+[ on the header |
+| Fold / unfold all | View menu; Cmd/Ctrl+Alt+Shift+[ / Cmd/Ctrl+Alt+Shift+] |
 
 Closing with unsaved files keeps the window open and shows a status message.
 Save all before closing again, or choose **File → Discard & close** after that message.
@@ -59,11 +64,11 @@ entry point. There is no shell expansion or implicit project task configuration.
 ## Structure and tests
 
 - `src/workspace`: files, documents, navigation and application coordination.
-- `src/language`: a stateful line lexer, incremental highlighting cache and syntax palette.
+- `src/language`: a stateful line lexer, incremental highlighting cache, indentation/string folding and syntax palette.
 - `src/editor`: options, shared actions, named pane views and application lifetime.
 - `src/commands`: asynchronous compiler/program orchestration.
 - `src/main.luc`: parse options, construct the editor, run.
-- `luce-ui`: reusable actions, toolbars, menus, themes, text controls and layout.
+- `luce-ui`: reusable actions, toolbars, menus, themes, panes, splitters and text controls.
 - Base standard library: native text input, clipboard, files and process resources.
 
 ```sh
@@ -71,10 +76,11 @@ python3 tests/run.py
 ./build/luced examples/hello/main.luc --smoke
 # macOS: read back the editor's actual Metal frame in an isolated test build
 python3 tools/preview.py --source examples/hello/main.luc
+python3 tools/preview.py --source src/editor/views.luc --fold
 ```
 
 Tests cover bounded line retokenization, randomized Unicode edits and full-lexer
-equivalence, multiline strings, undo/redo, stale decorations, CRLF persistence,
+equivalence, multiline strings, nested folding across edits, undo/redo, stale decorations, CRLF persistence,
 external-file conflicts, workspace focus, and real native build/run output.
 The UI and standard-library repositories have their own control, ownership,
 input, pixel, file and process regression suites. CI runs on all three hosts.
@@ -84,7 +90,7 @@ output; it is not an interactive PTY shell. Every control shares a 14-point mono
 output. `luce-ui` loads the native face and caches antialiased text at the display
 resolution (Menlo on macOS, Consolas on Windows, system monospace on Linux).
 Font shaping, grapheme navigation, accessibility, richer IME presentation,
-resizable splitters, search, completion, debugging and language-server integration
+search, completion, debugging and language-server integration
 remain future work. Files are bounded to 4 MiB on read and 1,048,576 editor
 scalars; 32 documents may remain open. See [the checklist](docs/PLAN.md) and
 [compiler follow-ups](docs/COMPILER-FOLLOWUPS.md).
@@ -103,3 +109,10 @@ frame. A 1,000-line regression checks that an ordinary edit scans one line.
 
 The [design and checklist](docs/UI-FRAMEWORK.md) records the framework contracts
 and the Qt, SwiftUI, VS Code, Vim and Emacs references behind them.
+
+Pane borders and both dividers are ordinary luce-ui components. Scroll bounds
+follow the longest visible line and visible row count, including after folding
+and resizing. Folding covers indented blocks and multiline strings in both Luce
+and Luce Base. It preserves source offsets, highlights and undo history; opening
+a parent fold restores its children's collapse state. See the
+[pane and folding design](docs/PANES-AND-FOLDING.md).

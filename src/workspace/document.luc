@@ -1,5 +1,5 @@
 ## Each open file owns its editor, so switching files preserves text, selection,
-## scroll position and undo history. Disk conflict checks precede atomic saves.
+## scroll position, folding and undo history. Disk conflict checks precede atomic saves.
 from ui import Font, TextEditor
 from language.highlighter import Highlighter
 from interop import Connection

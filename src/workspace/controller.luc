@@ -111,7 +111,13 @@ pub class Workspace:
             self.report("All open files saved")
             return
         let document = self.active else return
-        if name == "save":
+        if name == "fold":
+            discard(document.editor.toggle_fold(document.editor.line()))
+        elif name == "fold_all":
+            document.editor.fold_all()
+        elif name == "unfold_all":
+            document.editor.unfold_all()
+        elif name == "save":
             document.save()
             self.changed()
             self.report("Saved " + paths.name(document.path))
@@ -140,6 +146,15 @@ pub class Workspace:
 
     pub func discard_and_close(self) -> unit!:
         self.command("discard")
+
+    pub func toggle_fold(self) -> unit!:
+        self.command("fold")
+
+    pub func fold_all(self) -> unit!:
+        self.command("fold_all")
+
+    pub func unfold_all(self) -> unit!:
+        self.command("unfold_all")
 
     pub func can_close(self) -> bool!:
         if self.discard_confirmed:

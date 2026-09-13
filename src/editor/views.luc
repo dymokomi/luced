@@ -1,7 +1,7 @@
 ## Named view components expose only the controls that the workspace updates.
 ## Geometry uses font cells and text lines; continuous GPU content still fills
 ## the remaining area. Menus and toolbars share the same native actions.
-from ui import Font, Text, TextEditor, ListView, VStack, HStack, Toolbar, Menu, Button, Spacer, Size
+from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Pane, SplitView, Axis
 from editor.actions import EditorActions
 from workspace.explorer import Explorer
 import workspace.paths as paths
@@ -9,22 +9,20 @@ import workspace.paths as paths
 pub class Sidebar:
     pub let directory: Text
     pub let listing: ListView
-    pub let body: VStack
+    pub let body: Pane
 
     pub func init(self, explorer: Explorer, font: Font) -> unit!:
         let directory = Text(paths.short(explorer.directory, 24), font = font)
         let listing = ListView(explorer.labels(), font = font)
         let body = VStack([Toolbar([directory], font = font), listing], spacing = 0.0)
-        let width = font.advance() * 28.0
-        body.layout().set_limits(Size(width, 100.0), Size(width, 16384.0))
         self.directory = directory
         self.listing = listing
-        self.body = body
+        self.body = Pane(body, minimum = Size(140.0, 100.0))
 
 pub class EditorPane:
     pub let title: Text
     pub let host: VStack
-    pub let body: VStack
+    pub let body: Pane
 
     pub func init(self, font: Font) -> unit!:
         let title = Text("Open a file from the explorer", font = font)
@@ -35,19 +33,17 @@ pub class EditorPane:
         body.layout().set_flex()
         self.title = title
         self.host = host
-        self.body = body
+        self.body = Pane(body, minimum = Size(240.0, 100.0))
 
 pub class OutputPane:
     pub let output: TextEditor
-    pub let body: VStack
+    pub let body: Pane
 
     pub func init(self, font: Font) -> unit!:
         let output = TextEditor("Compiler and program output will appear here.\n", read_only = true, line_numbers = false, font = font)
         let body = VStack([Toolbar([Text("OUTPUT", font = font)], font = font), output], spacing = 0.0)
-        let height = font.line_height() * 8.0
-        body.layout().set_limits(Size(120.0, height), Size(16384.0, height))
         self.output = output
-        self.body = body
+        self.body = Pane(body, minimum = Size(240.0, 80.0))
 
 pub class EditorView:
     pub let sidebar: Sidebar
@@ -64,16 +60,15 @@ pub class EditorView:
         let menu = Toolbar([
             Menu("File", [actions.save, actions.save_all, actions.discard_changes], font = font),
             Menu("Build", [actions.build, actions.run, actions.stop], font = font),
+            Menu("View", [actions.fold, actions.fold_all, actions.unfold_all], font = font),
             Spacer(),
             Button(action = actions.save, font = font),
             Button(action = actions.build, font = font),
             Button(action = actions.run, font = font),
             Button(action = actions.stop, font = font)
         ], font = font)
-        let center = VStack([editor.body, output.body], spacing = 1.0)
-        center.layout().set_flex()
-        let panes = HStack([sidebar.body, center], spacing = 1.0)
-        panes.layout().set_flex()
+        let center = SplitView(editor.body, output.body, axis = Axis.vertical, fraction = 0.77)
+        let panes = SplitView(sidebar.body, center, fraction = 0.22)
         self.sidebar = sidebar
         self.editor = editor
         self.output = output

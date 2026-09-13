@@ -3,15 +3,8 @@
 from ui import TextEditor, Highlight
 from language.syntax import tokenize
 from gpu import Color
-
-class Line:
-    pub let start: int
-    pub let end: int
-    pub let state: str
-    pub func init(self, start: int, end: int, state: str):
-        self.start = start
-        self.end = end
-        self.state = state
+from language.folding import Line
+import language.folding as folding
 
 pub class SyntaxTheme:
     pub func color(self, kind: str) -> Color:
@@ -63,11 +56,12 @@ pub class Highlighter:
         while true:
             let end = self.editor.line_end(offset)
             let finish = end + 1 if end < self.editor.length() else end
-            let parsed = tokenize(self.editor.text_range(offset, finish), state)
+            let text = self.editor.text_range(offset, finish)
+            let parsed = tokenize(text, state)
             self.scanned_lines += 1
             for token in parsed.tokens:
                 spans.append(Highlight(offset + token.start, offset + token.end, self.theme.color(token.kind)))
-            replacement.append(Line(offset, finish, parsed.state))
+            replacement.append(folding.analyze(text, offset, finish, state, parsed))
             state = parsed.state
             offset = finish
             if incremental and offset >= change.new_end:
@@ -78,10 +72,11 @@ pub class Highlighter:
                     if incoming == state:
                         for index in previous..<self.lines.length:
                             let line = self.lines[index]
-                            replacement.append(Line(line.start + delta, line.end + delta, line.state))
+                            replacement.append(line.shifted(delta))
                         break
             if finish == self.editor.length():
                 break
         if self.editor.update_highlights(start, offset, spans, revision):
-            self.lines = replacement
-            self.version = revision
+            if self.editor.set_folds(folding.ranges(replacement, self.editor.length()), revision):
+                self.lines = replacement
+                self.version = revision

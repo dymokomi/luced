@@ -11,6 +11,9 @@ pub class EditorActions:
     pub let run: Action
     pub let stop: Action
     pub let discard_changes: Action
+    pub let fold: Action
+    pub let fold_all: Action
+    pub let unfold_all: Action
     pub let all: list[Action]
 
     pub func init(self) -> unit!:
@@ -26,12 +29,20 @@ pub class EditorActions:
         self.run = run
         self.stop = stop
         self.discard_changes = discard_changes
-        self.all = [save, save_all, build, run, stop, discard_changes]
+        let fold = Action("Toggle fold", Shortcut(Key.left_bracket, primary = true, alt = true))
+        let fold_all = Action("Fold all", Shortcut(Key.left_bracket, primary = true, shift = true, alt = true))
+        let unfold_all = Action("Unfold all", Shortcut(Key.right_bracket, primary = true, shift = true, alt = true))
+        self.fold = fold
+        self.fold_all = fold_all
+        self.unfold_all = unfold_all
+        self.all = [save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all]
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:
         return [self.save.on_trigger(workspace.save), self.save_all.on_trigger(workspace.save_all),
             self.build.on_trigger(workspace.build), self.run.on_trigger(workspace.run),
-            self.stop.on_trigger(workspace.stop), self.discard_changes.on_trigger(workspace.discard_and_close)]
+            self.stop.on_trigger(workspace.stop), self.discard_changes.on_trigger(workspace.discard_and_close),
+            self.fold.on_trigger(workspace.toggle_fold), self.fold_all.on_trigger(workspace.fold_all),
+            self.unfold_all.on_trigger(workspace.unfold_all)]
 
     pub func update(self, workspace: Workspace, busy: bool):
         self.save.set_enabled(workspace.has_document())
@@ -39,3 +50,6 @@ pub class EditorActions:
         self.build.set_enabled(workspace.has_document() and not busy)
         self.run.set_enabled(workspace.has_document() and not busy)
         self.stop.set_enabled(busy)
+        self.fold.set_enabled(workspace.has_document())
+        self.fold_all.set_enabled(workspace.has_document())
+        self.unfold_all.set_enabled(workspace.has_document())

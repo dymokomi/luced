@@ -12,6 +12,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--base', type=Path, default=ROOT.parent / 'luce-base/build/luce-base')
 p.add_argument('--luce', type=Path, default=ROOT.parent / 'luce/build/luce')
 p.add_argument('--source', type=Path, default=ROOT / 'src/main.luc')
+p.add_argument('--fold', action='store_true', help='capture the selected file with code folded')
 p.add_argument('--menu', action='store_true', help='capture the File popup through keyboard input')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
@@ -81,11 +82,15 @@ pub func main(arguments: list[str]) -> int!:
 """
     if a.menu:
         source = 'from ui import Event\nfrom input import EventKind, Key\n' + source
-        source = source.replace('        if captured:', '''        if frames == 10:
-            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.tab, control = true))
-            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.tab, control = true))
+        source = source.replace('        if captured:', """        if frames == 10:
+            editor.app.dispatch(Event(cancelled = true))
+            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.tab))
             editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.down))
-        if captured:''')
+        if captured:""")
+    if a.fold:
+        source = source.replace('        if captured:', """        if frames == 10:
+            editor.workspace.fold_all()
+        if captured:""")
     if a.run:
         source += '    editor.workspace.run()\n'
     source += '    editor.app.run()\n    observed.disconnect()\n    probe.save(' + json.dumps(str(a.output.resolve())) + ')\n    probe.end()\n    editor.close()\n    return 0\n'
