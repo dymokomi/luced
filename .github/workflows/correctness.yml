@@ -13,13 +13,10 @@ jobs:
         include:
           - runner: macos-15
             host: macOS
-            shell: bash
           - runner: ubuntu-24.04
             host: Linux
-            shell: bash
           - runner: windows-2025
             host: Windows
-            shell: 'msys2 {0}'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,21 +56,33 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev fonts-dejavu-core
       - name: Build native compilers
-        shell: ${{ matrix.shell }}
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          if [ "${{ runner.os }}" = Windows ]; then
-            export CC=gcc
-            (cd luce-base && python tools/build_windows.py)
-            (cd luce && python tools/build_windows.py)
-          else
-            (cd luce-base && CC=clang ./build.sh)
-            (cd luce && LUCE_BASE_COMPILER=../luce-base/build/luce-base ./build.sh)
-          fi
+          (cd luce-base && CC=clang ./build.sh)
+          (cd luce && LUCE_BASE_COMPILER=../luce-base/build/luce-base ./build.sh)
+      - name: Build native compilers on Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        env:
+          CC: gcc
+        run: |
+          (cd luce-base && python tools/build_windows.py)
+          (cd luce && python tools/build_windows.py)
       - name: Build and test editor behavior
-        shell: ${{ matrix.shell }}
+        if: runner.os != 'Windows'
+        shell: bash
         working-directory: luced
         run: |
-          if [ "${{ runner.os }}" = Windows ]; then export CC=gcc; fi
+          python3 tools/build.py
+          python3 tests/run.py
+      - name: Build and test editor behavior on Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        working-directory: luced
+        env:
+          CC: gcc
+        run: |
           python3 tools/build.py
           python3 tests/run.py
       - name: Inspect actual Metal output
