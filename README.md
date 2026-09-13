@@ -4,6 +4,8 @@ A small native code editor written in **Luce**, built with the **luce-ui** Base
 library. It has a file explorer, editable monospace source pane, Luce/Luce Base
 syntax highlighting, and a compiler/program output pane.
 
+![luced running the example through its native compiler](docs/preview.png)
+
 Open files retain their own selection, scrolling, unsaved edits and undo history.
 Saves replace files atomically, preserve existing permissions and CRLF line
 endings, and refuse to overwrite changes detected on disk. Build and Run use
