@@ -1,6 +1,6 @@
 ## Application coordination stays in Luce. Native controls expose user intent;
 ## this controller handles workspace navigation, dirty files and command status.
-from ui import Application, Text, ListView, VStack
+from ui import Application, Font, Text, ListView, VStack
 from interop import Connection
 from workspace.document import Document
 from workspace.explorer import Explorer
@@ -18,6 +18,7 @@ pub class Workspace:
     let title: Text
     let status: Text
     let editor_host: VStack
+    let font: Font?
     let runner: Runner
     var documents: list[Document]
     var connections: list[Connection]
@@ -30,7 +31,7 @@ pub class Workspace:
     var discard_confirmed: bool = false
 
     pub func init(self, app: Application, explorer: Explorer, listing: ListView, directory_label: Text,
-                  title: Text, status: Text, editor_host: VStack, runner: Runner):
+                  title: Text, status: Text, editor_host: VStack, runner: Runner, font: Font? = none):
         self.documents = []
         self.connections = []
         self.app = app
@@ -41,6 +42,7 @@ pub class Workspace:
         self.status = status
         self.editor_host = editor_host
         self.runner = runner
+        self.font = font
 
     pub func activate(self, index: int) -> unit!:
         self.open_entry(index) catch failure:
@@ -67,7 +69,7 @@ pub class Workspace:
         if chosen == none:
             if self.documents.length >= 32:
                 error(ui.invalid, "This workspace already has 32 open files. Save and reopen the editor to start another session.")
-            let document = Document(identity)
+            let document = Document(identity, self.font)
             self.documents.append(document)
             self.connections.append(document.editor.on_change(self.changed))
             self.connections.append(document.editor.on_command(self.command))

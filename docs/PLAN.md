@@ -31,3 +31,11 @@ Every build uses the native compiler and leaves only requested artifacts.
 - [x] Build and inspect the running editor, including its clean output directory.
 - [ ] Document setup, controls and proof-of-concept limits; commit coherent changes
   promptly and publish the finished sources.
+
+## Typography
+
+- [x] Load installed monospace fonts through `luce-ui.Font`.
+- [x] Share one 14-point font across all editor controls and open documents.
+- [x] Rasterize grayscale text at the display backing scale through standard GPU coverage.
+- [x] Verify font metrics, transparent backgrounds, ownership, real Metal pixels and editor behavior.
+- [x] Replace the preview with an actual capture of the updated editor.

@@ -78,8 +78,9 @@ The UI and standard-library repositories have their own control, ownership,
 input, pixel, file and process regression suites. CI runs on all three hosts.
 
 This is a proof of concept. The output pane displays captured compiler/program
-output; it is not an interactive PTY shell. The original bitmap monospace font
-covers printable ASCII; other Unicode is preserved but uses replacement glyphs.
+output; it is not an interactive PTY shell. Every control shares a 14-point monospace font, including toolbar buttons and
+output. `luce-ui` loads the native face and caches antialiased text at the display
+resolution (Menlo on macOS, Consolas on Windows, system monospace on Linux).
 Font shaping, grapheme navigation, accessibility, richer IME presentation,
 resizable splitters, search, completion, debugging and language-server integration
 remain future work. Files are bounded to 4 MiB on read and 1,048,576 editor

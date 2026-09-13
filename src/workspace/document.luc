@@ -1,6 +1,6 @@
 ## Each open file owns its editor, so switching files preserves text, selection,
 ## scroll position and undo history. Disk conflict checks precede atomic saves.
-from ui import TextEditor
+from ui import Font, TextEditor
 import files
 import ui
 
@@ -11,12 +11,12 @@ pub class Document:
     var baseline: str
     let crlf: bool
 
-    pub func init(self, path: str) -> unit!:
+    pub func init(self, path: str, font: Font? = none) -> unit!:
         let text = files.read_text(path)
         self.path = files.absolute_path(path)
         self.original = text
         self.crlf = text.contains("\r\n")
-        let editor = TextEditor(text)
+        let editor = TextEditor(text, font = font)
         self.editor = editor
         self.baseline = editor.text()
 
