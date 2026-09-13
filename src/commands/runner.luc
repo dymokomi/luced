@@ -1,0 +1,93 @@
+## One cancellable command at a time. Compiler and program processes use the
+## standard library's worker; UI callbacks only poll immutable output snapshots.
+from process import Command
+import files
+import platform
+from ui import TextEditor
+import workspace.paths as paths
+
+pub class Runner:
+    let output: TextEditor
+    let luce: str
+    let base: str
+    var command: Command? = none
+    var prefix: str = ""
+    var revision: int = -1
+    var next_program: str? = none
+    var directory: str = ""
+    pub var status: str = "Ready"
+
+    pub func init(self, output: TextEditor, luce: str, base: str):
+        self.output = output
+        self.luce = luce
+        self.base = base
+
+    pub func busy(self) -> bool:
+        return self.command != none
+
+    pub func build(self, source: str, run: bool) -> unit!:
+        if self.busy():
+            self.status = "A command is already running"
+            return
+        let compiler = self.base if source.ends_with(".lucb") else self.luce
+        self.directory = paths.parent(source)
+        let build = paths.join(project_root(self.directory), "build")
+        files.ensure_directory(build)
+        let binary = paths.join(build, paths.name(source) + (".exe" if platform.windows else ".out"))
+        self.prefix = f"$ {compiler} build {paths.name(source)} --native\n\n"
+        self.output.set_text(self.prefix)
+        self.command = Command(compiler, ["build", source, "--native", "-o", binary], directory = self.directory, environment = ["LUCE_BASE=" + self.base])
+        self.next_program = binary if run else none
+        self.revision = -1
+        self.status = "Building..."
+
+    pub func poll(self) -> unit!:
+        let command = self.command else return
+        let revision = command.revision()
+        if revision != self.revision:
+            self.output.set_text(self.prefix + command.output())
+            self.revision = revision
+        if not command.is_finished():
+            return
+        let code = command.exit_code() else -1
+        let failure = command.error_message()
+        let captured = self.prefix + command.output() + ("\n" + failure if failure != "" else "")
+        self.output.set_text(captured + f"\n\n[Exit {code}]\n")
+        command.close()
+        self.command = none
+        let next = self.next_program
+        self.next_program = none
+        if code == 0:
+            if let program = next:
+                self.prefix = captured + "\n$ " + paths.name(program) + "\n\n"
+                self.command = Command(program, [], directory = self.directory)
+                self.revision = -1
+                self.status = "Running..."
+                return
+        self.status = "Finished" if code == 0 else "Command failed — see output"
+
+    pub func stop(self):
+        self.next_program = none
+        if let command = self.command:
+            command.cancel()
+            self.status = "Stopping..."
+
+    pub func close(self):
+        self.next_program = none
+        if let command = self.command:
+            command.close()
+            self.command = none
+
+## Locate a package build directory without changing how the compiler resolves
+## the selected entry file. Standalone files use their containing directory.
+func project_root(directory: str) -> str:
+    var candidate = directory
+    while true:
+        let manifest = files.path_kind(paths.join(candidate, "luce.toml")) catch failure:
+            recover files.FileKind.unknown
+        if manifest == files.FileKind.regular:
+            return candidate
+        let parent = paths.parent(candidate)
+        if parent == candidate or parent == ".":
+            return directory
+        candidate = parent

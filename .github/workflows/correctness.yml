@@ -1,0 +1,86 @@
+name: Correctness
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  editor:
+    name: Editor (${{ matrix.host }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            host: macOS
+            shell: bash
+          - runner: ubuntu-24.04
+            host: Linux
+            shell: bash
+          - runner: windows-2025
+            host: Windows
+            shell: 'msys2 {0}'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: luced
+      - name: Read dependency pins
+        id: pins
+        shell: bash
+        run: |
+          echo "base=$(cat luced/bootstrap/BASE)" >> "$GITHUB_OUTPUT"
+          echo "luce=$(cat luced/bootstrap/LUCE)" >> "$GITHUB_OUTPUT"
+          echo "ui=$(cat luced/bootstrap/UI)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: dymokomi/luce-base
+          ref: ${{ steps.pins.outputs.base }}
+          path: luce-base
+      - uses: actions/checkout@v7
+        with:
+          repository: dymokomi/luce
+          ref: ${{ steps.pins.outputs.luce }}
+          path: luce
+      - uses: actions/checkout@v7
+        with:
+          repository: dymokomi/luce-ui
+          ref: ${{ steps.pins.outputs.ui }}
+          path: luce-ui
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-python
+            mingw-w64-ucrt-x86_64-vulkan-devel
+      - name: Build native compilers
+        shell: ${{ matrix.shell }}
+        run: |
+          if [ "${{ runner.os }}" = Windows ]; then
+            export CC=gcc
+            (cd luce-base && python tools/build_windows.py)
+            (cd luce && python tools/build_windows.py)
+          else
+            (cd luce-base && CC=clang ./build.sh)
+            (cd luce && LUCE_BASE_COMPILER=../luce-base/build/luce-base ./build.sh)
+          fi
+      - name: Build and test editor behavior
+        shell: ${{ matrix.shell }}
+        working-directory: luced
+        run: |
+          if [ "${{ runner.os }}" = Windows ]; then export CC=gcc; fi
+          python3 tools/build.py
+          python3 tests/run.py
+      - name: Inspect actual Metal output
+        if: runner.os == 'macOS'
+        shell: bash
+        working-directory: luced
+        run: python3 tools/preview.py --source examples/hello/main.luc
+      - name: Keep native preview
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: luced-metal-preview
+          path: luced/build/preview.ppm

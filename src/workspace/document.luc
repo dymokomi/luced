@@ -1,0 +1,34 @@
+## Each open file owns its editor, so switching files preserves text, selection,
+## scroll position and undo history. Disk conflict checks precede atomic saves.
+from ui import TextEditor
+import files
+import ui
+
+pub class Document:
+    pub let path: str
+    pub let editor: TextEditor
+    var original: str
+    let crlf: bool
+
+    pub func init(self, path: str) -> unit!:
+        let text = files.read_text(path)
+        self.path = files.absolute_path(path)
+        self.original = text
+        self.crlf = text.contains("\r\n")
+        self.editor = TextEditor(text)
+
+    pub func dirty(self) -> bool!:
+        return self.encoded_text() != self.original
+
+    func encoded_text(self) -> str!:
+        let text = self.editor.text()
+        return text.replace("\n", "\r\n") if self.crlf else text
+
+    pub func save(self) -> unit!:
+        let text = self.encoded_text()
+        if text == self.original:
+            return
+        if files.read_text(self.path) != self.original:
+            error(ui.invalid, "The file changed on disk. Your edits are still open; save a copy before reloading.")
+        files.write_text(self.path, text)
+        self.original = text

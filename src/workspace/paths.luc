@@ -1,0 +1,20 @@
+## The native filesystem canonicalizes identities; these helpers only assemble
+## displayed paths using separators accepted by all supported hosts.
+pub func parent(path: str) -> str:
+    let normalized = path.replace("\\", "/")
+    let pieces = normalized.split("/")
+    if pieces.length <= 1:
+        return "."
+    let result = pieces[..<pieces.length - 1].join("/")
+    if result == "":
+        return "/"
+    return result + "/" if result.ends_with(":") else result
+
+pub func join(directory: str, filename: str) -> str:
+    return directory + ("" if directory.ends_with("/") else "/") + filename
+
+pub func name(path: str) -> str:
+    return path.replace("\\", "/").split("/").last else path
+
+pub func short(text: str, width: int) -> str:
+    return text if text.length <= width else "..." + text[text.length - width + 3..]

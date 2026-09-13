@@ -1,0 +1,7 @@
+## The same workspace can edit and run systems-language programs.
+import io
+
+pub func main(arguments: str[]) -> i32!:
+    var output = io.stdout()
+    try output.write("Hello from Luce Base\n".bytes)
+    return 0

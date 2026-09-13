@@ -1,0 +1,185 @@
+## Application coordination stays in Luce. Native controls expose user intent;
+## this controller handles workspace navigation, dirty files and command status.
+from ui import Application, Text, ListView, VStack
+from interop import Connection
+from workspace.document import Document
+from workspace.explorer import Explorer
+from commands.runner import Runner
+import workspace.paths as paths
+import language.syntax as syntax
+import ui
+
+pub class Workspace:
+    let app: Application
+    let explorer: Explorer
+    let listing: ListView
+    let directory_label: Text
+    let title: Text
+    let status: Text
+    let editor_host: VStack
+    let runner: Runner
+    var documents: list[Document]
+    var connections: list[Connection]
+    var active: Document? = none
+    var pending_highlight: bool = false
+    var highlight_delay: float = 0.0
+    var status_text: str = ""
+    var message_time: float = 0.0
+    var close_pending: bool = false
+    var discard_confirmed: bool = false
+
+    pub func init(self, app: Application, explorer: Explorer, listing: ListView, directory_label: Text,
+                  title: Text, status: Text, editor_host: VStack, runner: Runner):
+        self.documents = []
+        self.connections = []
+        self.app = app
+        self.explorer = explorer
+        self.listing = listing
+        self.directory_label = directory_label
+        self.title = title
+        self.status = status
+        self.editor_host = editor_host
+        self.runner = runner
+
+    pub func activate(self, index: int) -> unit!:
+        self.open_entry(index) catch failure:
+            self.report(failure.message)
+
+    func open_entry(self, index: int) -> unit!:
+        if index < 0 or index >= self.explorer.entries.length:
+            return
+        let entry = self.explorer.entries[index]
+        if entry.directory:
+            self.explorer.open(entry.path)
+            self.listing.set_items(self.explorer.labels())
+            self.directory_label.set_text(paths.short(self.explorer.directory, 18))
+        else:
+            self.open(entry.path)
+
+    pub func open(self, path: str) -> unit!:
+        var chosen: Document? = none
+        for document in self.documents:
+            if document.path == path:
+                chosen = document
+                break
+        if chosen == none:
+            if self.documents.length >= 32:
+                error(ui.invalid, "This workspace already has 32 open files. Save and reopen the editor to start another session.")
+            let document = Document(path)
+            self.documents.append(document)
+            self.connections.append(document.editor.on_change(self.changed))
+            self.connections.append(document.editor.on_command(self.command))
+            chosen = document
+        let document = chosen else return
+        self.active = document
+        self.editor_host.set_children([document.editor])
+        self.pending_highlight = true
+        self.highlight_delay = 0.0
+        self.title.set_text(paths.short(document.path, 80))
+        self.app.focus(document.editor.layout())
+        self.close_pending = false
+
+    pub func changed(self) -> unit!:
+        self.pending_highlight = true
+        self.highlight_delay = 0.08
+        if let document = self.active:
+            self.title.set_text(paths.short(document.path, 78) + (" *" if document.dirty() else ""))
+
+    pub func report(self, message: str) -> unit!:
+        self.status.set_text(paths.short(message, 108))
+        self.status_text = message
+        self.message_time = 5.0
+
+    pub func command(self, name: str) -> unit!:
+        self.perform(name) catch failure:
+            self.report(failure.message)
+
+    func perform(self, name: str) -> unit!:
+        if name == "stop":
+            self.runner.stop()
+            return
+        if name == "discard":
+            if self.close_pending:
+                self.discard_confirmed = true
+                self.app.stop()
+            else:
+                self.report("Close the window first to review unsaved files before discarding.")
+            return
+        if name == "save_all":
+            for document in self.documents:
+                document.save()
+            self.changed()
+            self.report("All open files saved")
+            return
+        let document = self.active else return
+        if name == "save":
+            document.save()
+            self.changed()
+            self.report("Saved " + paths.name(document.path))
+        elif name == "build" or name == "run":
+            for open_document in self.documents:
+                open_document.save()
+            if not document.path.ends_with(".luc") and not document.path.ends_with(".lucb"):
+                error(ui.invalid, "Select a Luce or Luce Base source file to build.")
+            self.runner.build(document.path, name == "run")
+            self.changed()
+
+    pub func save(self) -> unit!:
+        self.command("save")
+
+    pub func save_all(self) -> unit!:
+        self.command("save_all")
+
+    pub func build(self) -> unit!:
+        self.command("build")
+
+    pub func run(self) -> unit!:
+        self.command("run")
+
+    pub func stop(self) -> unit!:
+        self.command("stop")
+
+    pub func discard_and_close(self) -> unit!:
+        self.command("discard")
+
+    pub func can_close(self) -> bool!:
+        if self.discard_confirmed:
+            return true
+        var count = 0
+        for document in self.documents:
+            if document.dirty():
+                count += 1
+        if count == 0:
+            return true
+        self.close_pending = true
+        self.report(f"{count} unsaved files. Choose Save all, or Discard & close, then close the window.")
+        return false
+
+    pub func frame(self, elapsed: float) -> unit!:
+        self.tick(elapsed) catch failure:
+            self.report(failure.message)
+
+    func tick(self, elapsed: float) -> unit!:
+        self.runner.poll()
+        if self.pending_highlight:
+            self.highlight_delay -= elapsed
+            if self.highlight_delay <= 0.0:
+                self.pending_highlight = false
+                if let document = self.active:
+                    if document.path.ends_with(".luc") or document.path.ends_with(".lucb"):
+                        document.editor.set_highlights(syntax.highlights(document.editor.text()))
+        self.message_time -= elapsed
+        if self.close_pending or self.message_time > 0.0:
+            return
+        if let document = self.active:
+            let language = "Luce Base" if document.path.ends_with(".lucb") else "Luce"
+            let text = f"{language}  |  Ln {document.editor.line()}, Col {document.editor.column()}  |  UTF-8  |  {self.runner.status}"
+            if text != self.status_text:
+                self.status.set_text(text)
+                self.status_text = text
+
+    pub func close(self):
+        self.runner.close()
+        for connection in self.connections:
+            connection.disconnect()
+        self.connections.clear()

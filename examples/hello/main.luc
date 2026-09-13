@@ -1,0 +1,16 @@
+## Open this file in luced and press Run (F5).
+## Try changing the greeting, then save with Cmd/Ctrl+S.
+
+struct Greeting:
+    let language: str
+    let version: int
+
+    func message(self) -> str:
+        return f"Hello from {self.language} — editor demo {self.version}"
+
+pub func main(arguments: list[str]) -> int!:
+    let greeting = Greeting("Luce", 1)
+    print(greeting.message())
+    for step in 1..=3:
+        print(f"  step {step}: native execution")
+    return 0

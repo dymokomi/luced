@@ -1,0 +1,75 @@
+## luced composes native UI controls without owning OS handles or GPU commands.
+from ui import Application, Button, Text, TextEditor, ListView, VStack, HStack, Spacer, Size
+from workspace.explorer import Explorer
+from workspace.controller import Workspace
+from commands.runner import Runner
+import workspace.paths as paths
+import files
+import ui
+
+pub func main(arguments: list[str]) -> int!:
+    var smoke = false
+    var location = "."
+    var luce = "luce"
+    var base = "luce-base"
+    var index = 0
+    while index < arguments.length:
+        let argument = arguments[index]
+        if argument == "--smoke":
+            smoke = true
+        elif argument == "--luce" or argument == "--base":
+            index += 1
+            if index >= arguments.length:
+                error(ui.invalid, argument + " needs a compiler path")
+            if argument == "--luce":
+                luce = files.absolute_path(arguments[index])
+            else:
+                base = files.absolute_path(arguments[index])
+        elif argument.starts_with("--"):
+            error(ui.invalid, "Unknown option: " + argument)
+        else:
+            location = argument
+        index += 1
+    let absolute = files.absolute_path(location)
+    let is_file = files.path_kind(absolute) == files.FileKind.regular
+    let explorer = Explorer(paths.parent(absolute) if is_file else absolute)
+    let listing = ListView(explorer.labels())
+    let directory_label = Text(paths.short(explorer.directory, 18))
+    let sidebar = VStack([Text("EXPLORER"), directory_label, listing], spacing = 14.0, padding = 12.0)
+    sidebar.layout().set_limits(Size(250.0, 100.0), Size(250.0, 16384.0))
+    sidebar.layout().set_flex(horizontal = 0.0)
+    let title = Text("Open a file from the explorer")
+    let welcome = TextEditor("luced\n\nA workspace for Luce and Luce Base.\n\nChoose a file from the explorer to begin.\n\nCmd/Ctrl+S   Save\nCmd/Ctrl+B   Build current source\nF5           Build and run\nCtrl+Tab     Move between controls\n", read_only = true, line_numbers = false)
+    let editor_host = VStack([welcome], spacing = 0.0)
+    editor_host.layout().set_flex()
+    let output = TextEditor("Compiler and program output will appear here.\n", read_only = true, line_numbers = false)
+    output.layout().set_limits(Size(120.0, 170.0), Size(16384.0, 170.0))
+    output.layout().set_flex(vertical = 0.0)
+    let center = VStack([title, editor_host, Text("OUTPUT"), output], spacing = 12.0, padding = 12.0)
+    center.layout().set_flex()
+    let body = HStack([sidebar, center], spacing = 1.0)
+    body.layout().set_flex()
+    let save = Button("Save")
+    let save_all = Button("Save all")
+    let build = Button("Build")
+    let run = Button("Run")
+    let stop = Button("Stop")
+    let discard_button = Button("Discard & close")
+    let toolbar = HStack([Text("luced"), Spacer(), save, save_all, build, run, stop, discard_button], spacing = 10.0, padding = 12.0)
+    let status = Text("Ready  |  UTF-8  |  Native UI")
+    let content = VStack([toolbar, body, status], spacing = 4.0, padding = 12.0)
+    let app = Application(content, title = "luced", width = 1180, height = 800)
+    let runner = Runner(output, luce, base)
+    let workspace = Workspace(app, explorer, listing, directory_label, title, status, editor_host, runner)
+    let connections = [listing.on_activate(workspace.activate), save.on_click(workspace.save),
+        save_all.on_click(workspace.save_all), build.on_click(workspace.build), run.on_click(workspace.run),
+        stop.on_click(workspace.stop), discard_button.on_click(workspace.discard_and_close), app.on_frame(workspace.frame)]
+    app.set_close_handler(workspace.can_close)
+    app.set_error_handler(workspace.report)
+    if is_file:
+        workspace.open(absolute)
+    app.run(frame_limit = 12 if smoke else 0)
+    workspace.close()
+    for connection in connections:
+        connection.disconnect()
+    return 0

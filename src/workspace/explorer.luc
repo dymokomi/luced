@@ -1,0 +1,43 @@
+import files
+from files import Entries, FileKind
+import workspace.paths as paths
+
+pub struct Entry:
+    pub let name: str
+    pub let path: str
+    pub let directory: bool
+
+pub class Explorer:
+    pub var directory: str
+    pub var entries: list[Entry]
+
+    pub func init(self, directory: str) -> unit!:
+        self.entries = []
+        self.directory = files.absolute_path(directory)
+        self.open(self.directory)
+
+    pub func open(self, path: str) -> unit!:
+        let absolute = files.absolute_path(path)
+        let snapshot = Entries(absolute)
+        var directories: list[Entry] = []
+        var regular: list[Entry] = []
+        for index in 0..<snapshot.count():
+            let name = snapshot.name(index) catch failure: continue
+            if name in [".git", ".DS_Store", "__pycache__"]:
+                continue
+            let full = paths.join(absolute, name)
+            let kind = files.path_kind(full) catch failure: continue
+            if kind == FileKind.directory:
+                directories.append(Entry(name, full, true))
+            elif kind == FileKind.regular:
+                regular.append(Entry(name, full, false))
+        snapshot.close()
+        let parent = paths.parent(absolute)
+        self.entries = ([Entry("..", parent, true)] if parent != absolute else []) + directories + regular
+        self.directory = absolute
+
+    pub func labels(self) -> list[str]:
+        var labels: list[str] = []
+        for entry in self.entries:
+            labels.append(("/ " if entry.directory else "  ") + entry.name)
+        return labels

@@ -1,0 +1,75 @@
+from ui import Application, Text, TextEditor, ListView, VStack
+from workspace.controller import Workspace
+from workspace.document import Document
+from workspace.explorer import Explorer
+from commands.runner import Runner
+import language.syntax as syntax
+import workspace.paths as paths
+import files
+import thread
+
+pub func main(arguments: list[str]) -> int!:
+    let root = arguments[0]
+    let source = paths.join(root, "main.luc")
+    let original = "pub func main(arguments: list[str]) -> int!:\r\n    print(\"hello from luced\")\r\n    return 0\r\n"
+    files.write_text(source, original)
+    let document = Document(source)
+    assert(not document.dirty())
+    document.editor.set_selection(0, 0)
+    document.editor.insert("# edited\n")
+    assert(document.dirty())
+    document.save()
+    assert(files.read_text(source).starts_with("# edited\r\n"))
+    assert(not document.dirty())
+    document.editor.undo()
+    assert(document.dirty())
+    document.save()
+    assert(files.read_text(source) == original)
+    files.write_text(source, "changed externally")
+    document.editor.insert("# conflict\n")
+    var refused = false
+    document.save() catch failure:
+        refused = true
+    assert(refused and files.read_text(source) == "changed externally")
+    files.write_text(source, original)
+    let spans = syntax.highlights("# λ\nlet text = \"é😀\"\nlet number = 0xff\n")
+    assert(spans.length == 5)
+    assert(spans[0].start == 0 and spans[0].end == 3)
+    assert(spans[1].start == 4 and spans[1].end == 7)
+    assert(spans[2].start == 15 and spans[2].end == 19)
+    let explorer = Explorer(root)
+    let listing = ListView(explorer.labels())
+    let host = VStack([Text("placeholder")])
+    let app = Application(host)
+    let output = TextEditor("", read_only = true)
+    let runner = Runner(output, arguments[1], arguments[2])
+    let workspace = Workspace(app, explorer, listing, Text("directory"), Text("file"), Text("status"), host, runner)
+    workspace.open(source)
+    workspace.frame(0.2)
+    assert(workspace.can_close())
+    let editor = host.layout().child(0)
+    app.layout(400.0, 300.0)
+    assert(editor.layout().is_focused())
+    runner.build(source, true)
+    var iterations = 0
+    while runner.busy():
+        runner.poll()
+        thread.yield()
+        iterations += 1
+        assert(iterations < 10000000)
+    assert(output.text().contains("hello from luced") and output.text().ends_with("[Exit 0]\n"))
+    let base_source = paths.join(root, "main.lucb")
+    files.write_text(base_source, "import io\n\npub func main(arguments: str[]) -> i32!:\n    var output = io.stdout()\n    discard(try output.write(\"hello from base\\n\".bytes))\n    return 0\n")
+    runner.build(base_source, true)
+    iterations = 0
+    while runner.busy():
+        runner.poll()
+        thread.yield()
+        iterations += 1
+        assert(iterations < 10000000)
+    assert(output.text().contains("hello from base") and output.text().ends_with("[Exit 0]\n"))
+    workspace.close()
+    assert(paths.parent("C:/work") == "C:/")
+    assert(paths.parent("/work") == "/")
+    print("PASS luced source highlighting, document persistence, conflicts, workspace and native build/run")
+    return 0
