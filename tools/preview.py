@@ -17,6 +17,7 @@ p.add_argument('--menu', action='store_true', help='capture the File popup throu
 p.add_argument('--palette', action='store_true', help='capture command search')
 p.add_argument('--context', choices=['editor', 'files', 'output'], help='capture a right-click menu')
 p.add_argument('--prompt', action='store_true', help='capture the new-file prompt')
+p.add_argument('--hover', choices=['edit-menu', 'divider', 'gutter', 'output'], help='capture hover feedback or top-level menu switching')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
 a = p.parse_args()
@@ -83,7 +84,7 @@ pub func main(arguments: list[str]) -> int!:
             probe.begin("luced")
             captured = true)
 """
-    if a.menu or a.palette or a.context:
+    if a.menu or a.palette or a.context or a.hover:
         source = 'from ui import Event\nfrom input import EventKind' + (', Key' if a.menu or a.palette else '') + '\n' + source
     if a.menu:
         source = source.replace('        if captured:', """        if frames == 10:
@@ -107,6 +108,29 @@ pub func main(arguments: list[str]) -> int!:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.actions.files.new_file.trigger()
         if captured:""")
+    if a.hover:
+        if a.hover == 'edit-menu':
+            events = '''            let file = editor.view.menu.layout().child(0).layout().bounds()
+            let edit = editor.view.menu.layout().child(1).layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_down, x = file.x + 2.0, y = file.y + 2.0))
+            editor.app.dispatch(Event(kind = EventKind.pointer_up, x = file.x + 2.0, y = file.y + 2.0))
+            editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = edit.x + 2.0, y = edit.y + 2.0))
+'''
+        elif a.hover == 'divider':
+            events = '''            let bounds = editor.view.sidebar.body.layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + bounds.width + 2.0, y = bounds.y + 40.0))
+'''
+        elif a.hover == 'gutter':
+            source = 'from ui import invalid\n' + source
+            events = '''            let control = editor.workspace.current_editor() else error(invalid, "preview needs an open document")
+            let bounds = control.layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + 4.0, y = bounds.y + 50.0))
+'''
+        else:
+            events = '''            let bounds = editor.view.output.output.layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + 12.0, y = bounds.y + 12.0))
+'''
+        source = source.replace('        if captured:', '        if frames == 10:\n' + events + '        if captured:')
     if a.fold:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.workspace.fold_all()

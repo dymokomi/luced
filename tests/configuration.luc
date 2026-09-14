@@ -34,6 +34,12 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
         recover Appearance())
     assert(refused)
     files.write_text(store.settings_path, settings.defaults())
+    assert(Appearance("[popup]\nshadow_opacity = 0.25\nshadow_offset = 6\n").theme.shadow_opacity == 0.25)
+    refused = false
+    discard(Appearance("[popup]\nshadow_opacity = 2\n") catch failure:
+        refused = true
+        recover Appearance())
+    assert(refused)
     let fixture = paths.join(root, "configuration-source.luc")
     files.write_text(fixture, "pub func sample():\n    let value = 1\n")
     let editor = Editor(Options([fixture, "--config-dir", directory, "--luce", luce, "--base", base]))

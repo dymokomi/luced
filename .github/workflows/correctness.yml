@@ -94,6 +94,8 @@ jobs:
           python3 tools/preview.py --source src/editor/views.luc --fold --output build/preview-folded.ppm
           python3 tools/preview.py --source src/editor/views.luc --palette --output build/preview-palette.ppm
           python3 tools/preview.py --source src/editor/views.luc --context files --output build/preview-context.ppm
+          python3 tools/preview.py --source src/editor/views.luc --hover edit-menu --output build/preview-menu-hover.ppm
+          python3 tools/preview.py --source src/editor/views.luc --hover gutter --output build/preview-gutter-hover.ppm
       - name: Keep native preview
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v7

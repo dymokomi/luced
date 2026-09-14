@@ -62,6 +62,7 @@ pub class EditorView:
     pub let status: Text
     pub let palette: CommandPalette
     pub let prompt: TextPrompt
+    pub let menu: Toolbar
     pub let body: ContextMenu
 
     pub func init(self, explorer: Explorer, actions: EditorActions, font: Font) -> unit!:
@@ -71,6 +72,7 @@ pub class EditorView:
         let status = Text("Ready", font = font)
         let menu = Toolbar([
             Menu("File", [actions.files.new_file, actions.files.new_folder, actions.save, actions.save_all, actions.settings, actions.theme, actions.discard_changes], font = font),
+            Menu("Edit", actions.editing.all, font = font),
             Menu("Build", [actions.build, actions.run, actions.stop], font = font),
             Menu("View", [actions.palette, actions.fold, actions.fold_all, actions.unfold_all, actions.next_pane, actions.previous_pane, actions.reload], font = font),
             Spacer(),
@@ -79,6 +81,7 @@ pub class EditorView:
             Button(action = actions.run, font = font),
             Button(action = actions.stop, font = font)
         ], font = font)
+        self.menu = menu
         let center = SplitView(editor.body, output.body, axis = Axis.vertical, fraction = 0.77)
         let panes = SplitView(sidebar.body, center, fraction = 0.22)
         let palette = CommandPalette(actions.all, font = font)

@@ -6,6 +6,9 @@ syntax highlighting and folding, and a compiler/program output pane. The three
 panes have themed borders and draggable dividers.
 Right-click menus, command search and editable user configuration are shared
 through ordinary luce-ui components.
+Popups have sharp shadows. Open top-level menus switch as the pointer crosses
+their titles; Left/Right also switch. Controls and pane borders respond to hover.
+See the [native menu preview](docs/menu-hover.png).
 
 ![luced with compact controls and named view composition](docs/preview.png)
 
@@ -54,6 +57,7 @@ program binaries under the nearest package's `build/` directory.
 | Move focus out of the editor | Ctrl+Tab |
 | Scroll | Wheel or touchpad; editor scrollbar also drags |
 | Resize panes | Drag the explorer/code or code/output divider |
+| Switch an open top-level menu | Hover another title, or Left/Right |
 | Resize with keys | Focus a divider, then arrows; Shift moves faster; Home/End reach limits |
 | Toggle a fold | Click its gutter marker; View menu; Cmd/Ctrl+Alt+[ on the header |
 | Fold / unfold all | View menu; Cmd/Ctrl+Alt+Shift+[ / Cmd/Ctrl+Alt+Shift+] |
@@ -75,6 +79,9 @@ unsaved open documents and removes a directory's contents only after confirmatio
 The editor menu exposes editing, save and folding commands. The output menu
 copies selected output, selects all or clears it. Right-clicking a row selects it
 without opening it; right-clicking selected text preserves the selection.
+Pane dividers show two border edges at rest; their center grip appears on hover,
+dragging or keyboard focus. The gutter highlights the caret's row and gives a
+separate hover cue over line numbers and fold markers.
 
 ## User settings and theme
 

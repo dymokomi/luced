@@ -87,7 +87,7 @@ be whole numbers. `--luce` and `--base` override compiler settings for that run.
 
 | Table | Keys |
 | --- | --- |
-| `colors` | `background`, `panel`, `foreground`, `muted`, `selection`, `accent`, `button`, `pressed`, `border`, `active_border`, `gutter` |
+| `colors` | `background`, `panel`, `foreground`, `muted`, `selection`, `accent`, `button`, `pressed`, `border`, `active_border`, `gutter`, `hover`, `hover_border`, `gutter_active`, `shadow` |
 | `syntax` | `keyword`, `string`, `comment`, `number`, `type`, `other` |
 
 Colors are quoted sRGB `#RRGGBB` values. For example:
@@ -100,6 +100,22 @@ active_border = "#598199"
 [syntax]
 keyword = "#C48BD3"
 ```
+
+Popup appearance also accepts a `[popup]` table:
+
+```toml
+[popup]
+shadow_offset = 4.0
+shadow_opacity = 0.35
+```
+
+The shadow is a sharp translated rectangle, with no blur. Offset accepts 0–32
+logical points, opacity accepts 0–1, and zero disables the shadow. Existing theme
+files need no edits: omitted keys use defaults. Add these keys to customize them.
+
+Hover uses `colors.hover` for controls and gutter rows, and `hover_border` for
+panes. Keyboard focus uses `active_border` and takes precedence. The caret's
+line-number row uses `gutter_active`, including while a menu is open.
 
 The application checks for changed contents every half second and validates both
 files before applying them. Font changes update the shared `Font` object used by
