@@ -4,6 +4,8 @@ A small native code editor written in **Luce**, built with the **luce-ui** Base
 library. It has a file explorer, editable monospace source pane, Luce/Luce Base
 syntax highlighting and folding, and a compiler/program output pane. The three
 panes have themed borders and draggable dividers.
+Right-click menus, command search and editable user configuration are shared
+through ordinary luce-ui components.
 
 ![luced with compact controls and named view composition](docs/preview.png)
 
@@ -55,17 +57,51 @@ program binaries under the nearest package's `build/` directory.
 | Resize with keys | Focus a divider, then arrows; Shift moves faster; Home/End reach limits |
 | Toggle a fold | Click its gutter marker; View menu; Cmd/Ctrl+Alt+[ on the header |
 | Fold / unfold all | View menu; Cmd/Ctrl+Alt+Shift+[ / Cmd/Ctrl+Alt+Shift+] |
+| Context menu | Right-click; Shift+F10 for the focused control |
+| Search commands | Cmd/Ctrl+P; type words, arrows to select, Enter to run, Escape to dismiss |
+| Cycle panels | F6 / Shift+F6 |
+| Focus explorer / editor / output | Cmd/Ctrl+1 / Cmd/Ctrl+2 / Cmd/Ctrl+3 |
 
 Closing with unsaved files keeps the window open and shows a status message.
 Save all before closing again, or choose **File → Discard & close** after that message.
 Build and Run save open documents first and compile the selected source as the
 entry point. There is no shell expansion or implicit project task configuration.
 
+The explorer menu creates files and folders, duplicates files, renames entries,
+copies paths, refreshes the list and deletes after confirmation. Creation and
+rename refuse existing destinations; duplicates choose an unused `copy` name.
+Renaming a folder updates the paths of its open documents. Deletion refuses
+unsaved open documents and removes a directory's contents only after confirmation.
+The editor menu exposes editing, save and folding commands. The output menu
+copies selected output, selects all or clears it. Right-clicking a row selects it
+without opening it; right-clicking selected text preserves the selection.
+
+## User settings and theme
+
+On first launch, luced creates `~/.luced/settings.toml` and `theme.toml`. On
+Windows this means `%USERPROFILE%\.luced`; on macOS/Linux it uses `$HOME/.luced`.
+Existing files are preserved. **Edit Settings** and **Edit Theme** in the command
+palette or File menu open them as ordinary editor documents.
+
+`settings.toml` configures the shared monospace font, initial window dimensions
+and compiler commands. `theme.toml` configures UI and syntax colors using sRGB
+`#RRGGBB` strings, including `gutter` and `active_border`. Save changes to apply
+them within half a second, or choose **Reload Configuration**. Font changes apply
+to all controls together; window dimensions apply at the next launch. Compiler
+paths supplied on the command line override the file.
+
+Both files are validated before application. Invalid edits remain available for
+correction, with an error in the status bar and the current configuration retained.
+Malformed startup files use defaults and report the problem. The supported TOML
+forms and defaults are described in [configuration design](docs/COMMANDS-AND-CONFIGURATION.md).
+Use `--config-dir DIRECTORY` for an isolated profile; tests and previews do this.
+
 ## Structure and tests
 
 - `src/workspace`: files, documents, navigation and application coordination.
 - `src/language`: a stateful line lexer, incremental highlighting cache, indentation/string folding and syntax palette.
 - `src/editor`: options, shared actions, named pane views and application lifetime.
+- `src/configuration`: scalar TOML parsing, settings/theme schemas and user file storage.
 - `src/commands`: asynchronous compiler/program orchestration.
 - `src/main.luc`: parse options, construct the editor, run.
 - `luce-ui`: reusable actions, toolbars, menus, themes, panes, splitters and text controls.
@@ -77,16 +113,21 @@ python3 tests/run.py
 # macOS: read back the editor's actual Metal frame in an isolated test build
 python3 tools/preview.py --source examples/hello/main.luc
 python3 tools/preview.py --source src/editor/views.luc --fold
+python3 tools/preview.py --source src/editor/views.luc --palette
+python3 tools/preview.py --source src/editor/views.luc --context files
 ```
 
 Tests cover bounded line retokenization, randomized Unicode edits and full-lexer
 equivalence, multiline strings, nested folding across edits, undo/redo, stale decorations, CRLF persistence,
 external-file conflicts, workspace focus, and real native build/run output.
+Configuration tests cover defaults, invalid input, theme reload, palette commands,
+file prompts, collisions, folder renames, dirty-file deletion and pane shortcuts.
 The UI and standard-library repositories have their own control, ownership,
 input, pixel, file and process regression suites. CI runs on all three hosts.
 
 This is a proof of concept. The output pane displays captured compiler/program
-output; it is not an interactive PTY shell. Every control shares a 14-point monospace font, including toolbar buttons and
+output; it is not an interactive PTY shell. Every control shares the configured
+monospace font (14 points by default), including toolbar buttons and
 output. `luce-ui` loads the native face and caches antialiased text at the display
 resolution (Menlo on macOS, Consolas on Windows, system monospace on Linux).
 Font shaping, grapheme navigation, accessibility, richer IME presentation,

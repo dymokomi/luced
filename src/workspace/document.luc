@@ -2,19 +2,21 @@
 ## scroll position, folding and undo history. Disk conflict checks precede atomic saves.
 from ui import Font, TextEditor
 from language.highlighter import Highlighter
+from language.appearance import SyntaxTheme
 from interop import Connection
 import files
 import ui
 
 pub class Document:
-    pub let path: str
+    pub var path: str
     pub let editor: TextEditor
     var original: str
     var baseline: str
     let crlf: bool
-    let highlighting: Connection?
+    var highlighting: Connection?
+    var highlighter: Highlighter?
 
-    pub func init(self, path: str, font: Font? = none) -> unit!:
+    pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none) -> unit!:
         let text = files.read_text(path)
         self.path = files.absolute_path(path)
         self.original = text
@@ -23,11 +25,33 @@ pub class Document:
         self.editor = editor
         self.baseline = editor.text()
         var highlighting: Connection? = none
+        var service: Highlighter? = none
         if path.ends_with(".luc") or path.ends_with(".lucb"):
-            let highlighter = Highlighter(editor)
+            let highlighter = Highlighter(editor, syntax)
             highlighter.update()
             highlighting = editor.on_change(highlighter.update)
+            service = highlighter
         self.highlighting = highlighting
+        self.highlighter = service
+
+    pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
+        if let highlighter = self.highlighter:
+            highlighter.set_theme(theme)
+
+    pub func rename(self, path: str, syntax: SyntaxTheme?) -> unit!:
+        self.path = path
+        let language = path.ends_with(".luc") or path.ends_with(".lucb")
+        if language and self.highlighter == none:
+            let highlighter = Highlighter(self.editor, syntax)
+            highlighter.update()
+            self.highlighting = self.editor.on_change(highlighter.update)
+            self.highlighter = highlighter
+        elif not language and self.highlighter != none:
+            if let connection = self.highlighting: connection.disconnect()
+            self.highlighting = none
+            self.highlighter = none
+            self.editor.set_highlights([])
+            discard(self.editor.set_folds([], self.editor.version()))
 
     pub func dirty(self) -> bool!:
         return self.editor.text() != self.baseline

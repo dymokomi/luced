@@ -1,10 +1,13 @@
 ## Application coordination stays in Luce. Native controls expose user intent;
 ## this controller handles workspace navigation, dirty files and command status.
-from ui import Application, Font, Text, ListView, VStack
+from ui import Application, Font, Text, TextEditor, ListView, VStack
 from interop import Connection
 from workspace.document import Document
 from workspace.explorer import Explorer
 from commands.runner import Runner
+from language.appearance import SyntaxTheme
+from workspace.explorer import Entry
+import workspace.operations as operations
 import workspace.paths as paths
 import ui
 import files
@@ -22,6 +25,7 @@ pub class Workspace:
     var documents: list[Document]
     var connections: list[Connection]
     var active: Document? = none
+    var syntax: SyntaxTheme? = none
     var status_text: str = ""
     var message_time: float = 0.0
     var close_pending: bool = false
@@ -43,6 +47,91 @@ pub class Workspace:
 
     pub func has_document(self) -> bool:
         return self.active != none
+
+    pub func current_editor(self) -> TextEditor?:
+        let active = self.active else return none
+        return active.editor
+
+    pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
+        self.syntax = theme
+        for document in self.documents:
+            document.set_syntax(theme)
+
+    pub func focus_editor(self) -> unit!:
+        if let document = self.active:
+            self.app.focus(document.editor.layout())
+        elif self.editor_host.layout().child_count() > 0:
+            self.app.focus(self.editor_host.layout().child(0).layout())
+
+    pub func selected_entry(self) -> Entry?:
+        let index = self.listing.selected_index()
+        if index < 0 or index >= self.explorer.entries.length:
+            return none
+        let entry = self.explorer.entries[index]
+        return none if entry.name == ".." else entry
+
+    pub func directory(self) -> str:
+        return self.explorer.directory
+
+    pub func refresh_files(self) -> unit!:
+        self.explorer.open(self.explorer.directory)
+        self.listing.set_items(self.explorer.labels())
+
+    pub func create_file(self, directory: str, name: str) -> unit!:
+        let path = operations.create_file(directory, name)
+        self.refresh_files()
+        self.open(path)
+
+    pub func create_folder(self, directory: str, name: str) -> unit!:
+        operations.create_folder(directory, name)
+        self.refresh_files()
+
+    pub func duplicate_file(self, path: str) -> unit!:
+        let copied = operations.duplicate(path)
+        self.refresh_files()
+        self.report("Created " + paths.name(copied))
+
+    pub func rename_entry(self, source: str, name: str) -> unit!:
+        let entry = paths.join(files.absolute_path(paths.parent(source)), paths.name(source))
+        let linked = files.path_kind(entry, follow_symlinks = false) == files.FileKind.symlink
+        let identity = files.absolute_path(entry)
+        let destination = operations.child(paths.parent(entry), name)
+        if entry == destination:
+            return
+        files.move_path(entry, destination)
+        let renamed = files.absolute_path(destination)
+        for document in self.documents:
+            if not linked and (document.path == identity or document.path.starts_with(identity + "/")):
+                document.rename(renamed + document.path[identity.length..], self.syntax)
+        self.refresh_files()
+        self.changed()
+
+    pub func delete_entry(self, path: str) -> unit!:
+        let entry = paths.join(files.absolute_path(paths.parent(path)), paths.name(path))
+        let linked = files.path_kind(entry, follow_symlinks = false) == files.FileKind.symlink
+        let identity = files.absolute_path(entry)
+        for document in self.documents:
+            if not linked and (document.path == identity or document.path.starts_with(identity + "/")) and document.dirty():
+                error(ui.invalid, "Save unsaved changes before deleting " + paths.name(path))
+        files.delete_path(entry, recursive = true)
+        var index = self.documents.length
+        while index > 0:
+            index -= 1
+            let document = self.documents[index]
+            if not linked and (document.path == identity or document.path.starts_with(identity + "/")):
+                if let active = self.active:
+                    if active is document:
+                        self.active = none
+                self.connections[index].disconnect()
+                discard(self.connections.remove_at(index))
+                discard(self.documents.remove_at(index))
+        if self.active == none:
+            if let remaining = self.documents.first:
+                self.open(remaining.path)
+            else:
+                self.editor_host.set_children([TextEditor("Open a file from the explorer", read_only = true, line_numbers = false, font = self.font)])
+                self.title.set_text("Open a file from the explorer")
+        self.refresh_files()
 
     pub func activate(self, index: int) -> unit!:
         self.open_entry(index) catch failure:
@@ -69,7 +158,7 @@ pub class Workspace:
         if chosen == none:
             if self.documents.length >= 32:
                 error(ui.invalid, "This workspace already has 32 open files. Save and reopen the editor to start another session.")
-            let document = Document(identity, self.font)
+            let document = Document(identity, self.font, self.syntax)
             self.documents.append(document)
             self.connections.append(document.editor.on_change(self.changed))
             chosen = document
@@ -179,7 +268,7 @@ pub class Workspace:
         if self.close_pending or self.message_time > 0.0:
             return
         if let document = self.active:
-            let language = "Luce Base" if document.path.ends_with(".lucb") else "Luce"
+            let language = "Luce Base" if document.path.ends_with(".lucb") else ("Luce" if document.path.ends_with(".luc") else ("TOML" if document.path.ends_with(".toml") else "Text"))
             let text = f"{language}  |  Ln {document.editor.line()}, Col {document.editor.column()}  |  UTF-8  |  {self.runner.status}"
             if text != self.status_text:
                 self.status.set_text(text)

@@ -18,6 +18,7 @@ with tempfile.TemporaryDirectory(prefix='luced-tests-') as temp:
     project = root / 'application'
     shutil.copytree(ROOT / 'src', project / 'src')
     shutil.copy2(ROOT / 'tests/main.luc', project / 'src/main.luc')
+    shutil.copy2(ROOT / 'tests/configuration.luc', project / 'src/configuration_tests.luc')
     (project / 'luce.toml').write_text('[package]\nname = "luced_tests"\nsource = "src"\n[dependencies]\nluce_ui = ' + json.dumps(str(ROOT.parent / 'luce-ui')) + '\n')
     (root / 'luce.toml').write_text('[package]\nname = "luced_fixture"\nsource = "."\n')
     binary = root / ('tests.exe' if os.name == 'nt' else 'tests')

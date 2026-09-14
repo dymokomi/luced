@@ -1,0 +1,55 @@
+## Configured hex colors are sRGB; standard gpu colors use linear components.
+from ui import Theme
+from gpu import Color
+from language.appearance import SyntaxTheme
+from configuration.toml import Table
+import math
+import ui
+
+pub class Appearance:
+    pub let theme: Theme
+    pub let syntax: SyntaxTheme
+
+    pub func init(self, source: str = "") -> unit!:
+        let table = Table(source)
+        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.pressed", "colors.border", "colors.active_border", "colors.gutter", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.number", "syntax.type", "syntax.other"])
+        var theme = Theme()
+        theme.background = read_color(table, "colors.background", theme.background)
+        theme.panel = read_color(table, "colors.panel", theme.panel)
+        theme.foreground = read_color(table, "colors.foreground", theme.foreground)
+        theme.muted = read_color(table, "colors.muted", theme.muted)
+        theme.selection = read_color(table, "colors.selection", theme.selection)
+        theme.accent = read_color(table, "colors.accent", theme.accent)
+        theme.button = read_color(table, "colors.button", theme.button)
+        theme.pressed = read_color(table, "colors.pressed", theme.pressed)
+        theme.border = read_color(table, "colors.border", theme.border)
+        theme.active_border = read_color(table, "colors.active_border", theme.active_border)
+        theme.gutter = read_color(table, "colors.gutter", theme.gutter)
+        var syntax: map[str, Color] = {}
+        syntax["keyword"] = read_color(table, "syntax.keyword", Color(0.55, 0.26, 0.65))
+        syntax["string"] = read_color(table, "syntax.string", Color(0.39, 0.58, 0.28))
+        syntax["comment"] = read_color(table, "syntax.comment", Color(0.19, 0.32, 0.31))
+        syntax["number"] = read_color(table, "syntax.number", Color(0.72, 0.43, 0.19))
+        syntax["type"] = read_color(table, "syntax.type", Color(0.12, 0.54, 0.65))
+        syntax["other"] = read_color(table, "syntax.other", Color(0.57, 0.64, 0.36))
+        self.theme = theme
+        self.syntax = SyntaxTheme(syntax)
+
+func read_color(table: Table, key: str, fallback: Color) -> Color!:
+    let value = table.values[key] else return fallback
+    let text = value.string()
+    if text.length != 7 or not text.starts_with("#"):
+        error(ui.invalid, f"Line {value.line}: {key} needs a color like #1C232E")
+    var components: list[float] = []
+    for index in 0..<3:
+        let start = 1 + index * 2
+        var number = 0
+        for character in text[start..<start + 2].lower():
+            let digit = "0123456789abcdef".index_of(character) else error(ui.invalid, f"Line {value.line}: invalid hexadecimal color")
+            number = number * 16 + digit
+        let encoded = float(number) / 255.0
+        components.append(encoded / 12.92 if encoded <= 0.04045 else math.pow((encoded + 0.055) / 1.055, 2.4))
+    return Color(components[0], components[1], components[2])
+
+pub func defaults() -> str:
+    return "# luced theme. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#1D232E\"\npanel = \"#282F39\"\nforeground = \"#D7DEEA\"\nmuted = \"#8B9EB3\"\nselection = \"#355D81\"\naccent = \"#7CD4F6\"\nbutton = \"#323B48\"\npressed = \"#42596F\"\nborder = \"#455261\"\nactive_border = \"#598199\"\ngutter = \"#282F39\"\n\n[syntax]\nkeyword = \"#C48BD3\"\nstring = \"#A8C890\"\ncomment = \"#799997\"\nnumber = \"#DDAF79\"\ntype = \"#61C2D3\"\nother = \"#C7D1A2\"\n"

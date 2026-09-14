@@ -11,12 +11,14 @@ import ui
 import workspace.paths as paths
 import files
 import thread
+from configuration_tests import configuration
 
 pub func main(arguments: list[str]) -> int!:
     language_folding()
     highlighting()
     randomized_highlighting()
     let root = arguments[0]
+    configuration(root, arguments[1], arguments[2])
     let source = paths.join(root, "main.luc")
     let original = "pub func main(arguments: list[str]) -> int!:\r\n    print(\"hello from luced\")\r\n    return 0\r\n"
     files.write_text(source, original)

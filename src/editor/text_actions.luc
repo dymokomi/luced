@@ -1,0 +1,82 @@
+## Text menus bind to one control. Source and output therefore share editing
+## behavior without sending output commands to the currently open source file.
+from ui import Action, TextEditor
+from interop import Connection
+
+pub class TextActions:
+    pub let undo: Action
+    pub let redo: Action
+    pub let cut: Action
+    pub let copy: Action
+    pub let paste: Action
+    pub let select_all: Action
+    pub let clear: Action
+    pub let all: list[Action]
+    let connections: list[Connection]
+    var editor: TextEditor? = none
+
+    pub func init(self, output: bool = false) -> unit!:
+        let undo = Action("Undo")
+        let redo = Action("Redo")
+        let cut = Action("Cut")
+        let copy = Action("Copy Output Selection" if output else "Copy")
+        let paste = Action("Paste")
+        let select_all = Action("Select All Output" if output else "Select All")
+        let clear = Action("Clear Output")
+        self.undo = undo
+        self.redo = redo
+        self.cut = cut
+        self.copy = copy
+        self.paste = paste
+        self.select_all = select_all
+        self.clear = clear
+        self.all = [copy, select_all, clear] if output else [undo, redo, cut, copy, paste, select_all]
+        self.connections = []
+        self.connections.append(undo.on_trigger(self.perform_undo))
+        self.connections.append(redo.on_trigger(self.perform_redo))
+        self.connections.append(cut.on_trigger(self.perform_cut))
+        self.connections.append(copy.on_trigger(self.perform_copy))
+        self.connections.append(paste.on_trigger(self.perform_paste))
+        self.connections.append(select_all.on_trigger(self.perform_select_all))
+        self.connections.append(clear.on_trigger(self.perform_clear))
+        self.update()
+
+    pub func bind(self, editor: TextEditor?):
+        self.editor = editor
+        self.update()
+
+    pub func update(self):
+        for action in self.all: action.set_enabled(false)
+        let editor = self.editor else return
+        self.undo.set_enabled(editor.can_undo())
+        self.redo.set_enabled(editor.can_redo())
+        self.cut.set_enabled(editor.has_selection() and not editor.is_read_only())
+        self.copy.set_enabled(editor.has_selection())
+        self.paste.set_enabled(not editor.is_read_only())
+        self.select_all.set_enabled(editor.length() > 0)
+        self.clear.set_enabled(editor.length() > 0)
+
+    func perform_undo(self) -> unit!:
+        if let editor = self.editor: editor.undo()
+
+    func perform_redo(self) -> unit!:
+        if let editor = self.editor: editor.redo()
+
+    func perform_cut(self) -> unit!:
+        if let editor = self.editor: editor.cut()
+
+    func perform_copy(self) -> unit!:
+        if let editor = self.editor: editor.copy()
+
+    func perform_paste(self) -> unit!:
+        if let editor = self.editor: editor.paste()
+
+    func perform_select_all(self) -> unit!:
+        if let editor = self.editor: editor.select_all()
+
+    func perform_clear(self) -> unit!:
+        if let editor = self.editor: editor.set_text("")
+
+    pub func close(self):
+        for connection in self.connections: connection.disconnect()
+        self.connections.clear()

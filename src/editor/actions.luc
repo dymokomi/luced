@@ -3,6 +3,8 @@ from ui import Action, Shortcut
 from input import Key
 from interop import Connection
 from workspace.controller import Workspace
+from editor.text_actions import TextActions
+from editor.file_actions import FileActions
 
 pub class EditorActions:
     pub let save: Action
@@ -14,6 +16,18 @@ pub class EditorActions:
     pub let fold: Action
     pub let fold_all: Action
     pub let unfold_all: Action
+    pub let palette: Action
+    pub let settings: Action
+    pub let theme: Action
+    pub let reload: Action
+    pub let next_pane: Action
+    pub let previous_pane: Action
+    pub let focus_explorer: Action
+    pub let focus_editor: Action
+    pub let focus_output: Action
+    pub let editing: TextActions
+    pub let output: TextActions
+    pub let files: FileActions
     pub let all: list[Action]
 
     pub func init(self) -> unit!:
@@ -35,7 +49,32 @@ pub class EditorActions:
         self.fold = fold
         self.fold_all = fold_all
         self.unfold_all = unfold_all
-        self.all = [save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all]
+        let palette = Action("Command Palette", Shortcut(Key.p, primary = true))
+        self.palette = palette
+        let settings = Action("Edit Settings")
+        self.settings = settings
+        let theme = Action("Edit Theme")
+        self.theme = theme
+        let reload = Action("Reload Configuration")
+        self.reload = reload
+        let next_pane = Action("Next Panel", Shortcut(Key.f6))
+        self.next_pane = next_pane
+        let previous_pane = Action("Previous Panel", Shortcut(Key.f6, shift = true))
+        self.previous_pane = previous_pane
+        let focus_explorer = Action("Focus Explorer", Shortcut(Key.digit_1, primary = true))
+        self.focus_explorer = focus_explorer
+        let focus_editor = Action("Focus Editor", Shortcut(Key.digit_2, primary = true))
+        self.focus_editor = focus_editor
+        let focus_output = Action("Focus Output", Shortcut(Key.digit_3, primary = true))
+        self.focus_output = focus_output
+        let editing = TextActions()
+        let output = TextActions(output = true)
+        let files = FileActions()
+        self.editing = editing
+        self.output = output
+        self.files = files
+        self.all = [save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output] + files.all + editing.all + output.all
+
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:
         return [self.save.on_trigger(workspace.save), self.save_all.on_trigger(workspace.save_all),
@@ -45,6 +84,9 @@ pub class EditorActions:
             self.unfold_all.on_trigger(workspace.unfold_all)]
 
     pub func update(self, workspace: Workspace, busy: bool):
+        self.editing.bind(workspace.current_editor())
+        self.output.update()
+        self.files.update()
         self.save.set_enabled(workspace.has_document())
         self.save_all.set_enabled(workspace.has_document())
         self.build.set_enabled(workspace.has_document() and not busy)

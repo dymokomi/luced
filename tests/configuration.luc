@@ -1,0 +1,109 @@
+from configuration.settings import Settings
+from configuration.theme import Appearance
+from configuration.store import Store
+from editor.application import Editor
+from editor.options import Options
+from ui import Event
+from input import EventKind, Key
+import configuration.settings as settings
+import configuration.theme as theme
+import files
+import workspace.paths as paths
+import workspace.operations as operations
+
+pub func configuration(root: str, luce: str, base: str) -> unit!:
+    let directory = paths.join(root, "configuration")
+    let store = Store(directory)
+    let original = store.read_settings()
+    assert(Settings(original).font_size == 14.0)
+    assert(Appearance(store.read_theme()).theme.gutter != Appearance().theme.background)
+    files.write_text(store.settings_path, "[editor]\nfont_size = 17.0 # preserved\nfont_family = 'Monospace # λ'\n")
+    let reopened = Store(directory)
+    assert(reopened.read_settings().contains("# preserved"))
+    assert(Settings(reopened.read_settings()).font_family == "Monospace # λ")
+    assert(Settings("[editor]\nfont_size = 1_4.5e0\n").font_size == 14.5)
+    for text in ["[editor]\nfont_size = 0\n", "[editor]\nfont_size = 14\nfont_size = 15\n", "[editor]\nfont_size = 014\n", "[editor]\nfont_size = 1__4\n", "[editor]\nfont_size = 14.\n", "[unknown]\n", "[editor]\nfont_szie = 14\n", "[editor]\nfont_family = \"unterminated\n"]:
+        var refused = false
+        discard(Settings(text) catch failure:
+            refused = true
+            recover Settings())
+        assert(refused)
+    var refused = false
+    discard(Appearance("[colors]\ngutter = \"#wrong!\"\n") catch failure:
+        refused = true
+        recover Appearance())
+    assert(refused)
+    files.write_text(store.settings_path, settings.defaults())
+    let fixture = paths.join(root, "configuration-source.luc")
+    files.write_text(fixture, "pub func sample():\n    let value = 1\n")
+    let editor = Editor(Options([fixture, "--config-dir", directory, "--luce", luce, "--base", base]))
+    editor.app.layout(1000.0, 700.0)
+    assert(editor.view.editor.body.layout().contains_focus())
+    editor.actions.files.new_file.trigger()
+    editor.app.layout(1000.0, 700.0)
+    assert(editor.view.prompt.is_open())
+    for scalar in [110, 101, 119, 45, 955, 46, 108, 117, 99]:
+        editor.app.dispatch(Event(kind = EventKind.text_input, codepoint = scalar))
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.enter))
+    assert(not editor.view.prompt.is_open() and files.read_text(paths.join(root, "new-λ.luc")) == "")
+    editor.workspace.delete_entry(paths.join(root, "new-λ.luc"))
+    editor.workspace.open(fixture)
+    editor.app.layout(1000.0, 700.0)
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.f6))
+    editor.app.layout(1000.0, 700.0)
+    assert(editor.view.output.body.layout().contains_focus() and not editor.view.editor.body.layout().contains_focus())
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.f6, shift = true))
+    editor.app.layout(1000.0, 700.0)
+    assert(editor.view.editor.body.layout().contains_focus())
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.p, control = true))
+    editor.app.layout(1000.0, 700.0)
+    for scalar in [101, 100, 105, 116, 32, 115, 101, 116, 116, 105, 110, 103, 115]:
+        editor.app.dispatch(Event(kind = EventKind.text_input, codepoint = scalar))
+    assert(editor.view.palette.result_count() == 1)
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.enter))
+    assert(not editor.view.palette.is_open())
+    let active = editor.workspace.current_editor() else error(files.failed, "settings were not opened")
+    assert(active.text() == settings.defaults())
+    files.write_text(store.theme_path, "[colors]\ngutter = \"#445566\"\nactive_border = \"#668899\"\n")
+    editor.configuration.reload()
+    editor.app.layout(1000.0, 700.0)
+    let changed = editor.view.body.layout().theme().gutter
+    assert(changed == Appearance(store.read_theme()).theme.gutter)
+    files.write_text(store.theme_path, "[colors]\ngutter = \"invalid\"\n")
+    editor.configuration.reload()
+    assert(editor.view.body.layout().theme().gutter == changed and store.read_theme().contains("invalid"))
+    files.write_text(store.theme_path, theme.defaults())
+    editor.configuration.reload()
+    editor.workspace.open(fixture)
+    editor.workspace.rename_entry(fixture, "renamed-λ.luc")
+    let renamed = paths.join(root, "renamed-λ.luc")
+    let source = editor.workspace.current_editor() else error(files.failed, "renamed source was lost")
+    source.insert("# retained\n")
+    editor.workspace.save()
+    assert(files.read_text(renamed).starts_with("# retained"))
+    let copied = operations.duplicate(renamed)
+    let second = operations.duplicate(renamed)
+    assert(copied != second and files.read_text(copied) == files.read_text(renamed))
+    refused = false
+    discard(operations.create_file(root, paths.name(renamed)) catch failure:
+        refused = true
+        recover "")
+    assert(refused and files.read_text(renamed).starts_with("# retained"))
+    source.insert("unsaved")
+    refused = false
+    editor.workspace.delete_entry(renamed) catch failure: refused = true
+    assert(refused and files.path_kind(renamed) == files.FileKind.regular)
+    source.undo()
+    editor.workspace.delete_entry(renamed)
+    editor.workspace.create_folder(root, "nested-λ")
+    let nested = paths.join(root, "nested-λ")
+    editor.workspace.create_file(nested, "child.luc")
+    editor.workspace.rename_entry(nested, "renamed-folder")
+    let nested_source = editor.workspace.current_editor() else error(files.failed, "nested source was lost")
+    nested_source.insert("# preserved after folder rename\n")
+    editor.workspace.save()
+    assert(files.read_text(paths.join(root, "renamed-folder/child.luc")).contains("preserved"))
+    editor.workspace.delete_entry(paths.join(root, "renamed-folder"))
+    files.delete_path(copied)
+    files.delete_path(second)
+    editor.close()

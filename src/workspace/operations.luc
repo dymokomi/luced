@@ -1,0 +1,36 @@
+## File operations never infer overwrite permission from an earlier existence
+## check. Standard exclusive creation/copy/rename makes collisions reportable.
+import files
+import ui
+import workspace.paths as paths
+
+pub func child(directory: str, name: str) -> str!:
+    if name == "" or name == "." or name == ".." or name.contains("/") or name.contains("\\") or name.contains(":"):
+        error(ui.invalid, "Enter a single file or folder name")
+    for character in name:
+        if character < " " or character == "\u{7f}":
+            error(ui.invalid, "Names cannot contain control characters")
+    return paths.join(directory, name)
+
+pub func create_file(directory: str, name: str) -> str!:
+    let path = child(directory, name)
+    files.create_text(path)
+    return path
+
+pub func create_folder(directory: str, name: str) -> unit!:
+    files.make_directory(child(directory, name))
+
+pub func duplicate(source: str) -> str!:
+    let filename = paths.name(source)
+    let dot = filename.split(".")
+    let extension = "." + (dot.last else "") if dot.length > 1 and not filename.starts_with(".") else ""
+    let stem = filename[..<filename.length - extension.length]
+    for number in 1..<10001:
+        let suffix = " copy" if number == 1 else f" copy {number}"
+        let target = paths.join(paths.parent(source), stem + suffix + extension)
+        files.copy_path(source, target) catch failure:
+            if failure.code == files.already_exists:
+                continue
+            error(failure.code, failure.message)
+        return target
+    error(ui.invalid, "No unused duplicate filename was found")

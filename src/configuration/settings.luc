@@ -1,0 +1,27 @@
+from configuration.toml import Table
+import ui
+
+pub class Settings:
+    pub let font_family: str
+    pub let font_size: float
+    pub let width: int
+    pub let height: int
+    pub let luce: str
+    pub let base: str
+
+    pub func init(self, source: str = "") -> unit!:
+        let table = Table(source)
+        table.check_keys(["editor.font_family", "editor.font_size", "window.width", "window.height", "compiler.luce", "compiler.luce_base"])
+        self.font_family = table.string("editor.font_family", "")
+        self.font_size = table.number("editor.font_size", 14.0, 8.0, 40.0)
+        let width = table.number("window.width", 1180.0, 480.0, 4096.0)
+        let height = table.number("window.height", 800.0, 300.0, 4096.0)
+        if float(int(width)) != width or float(int(height)) != height:
+            error(ui.invalid, "Window dimensions must be whole numbers")
+        self.width = int(width)
+        self.height = int(height)
+        self.luce = table.string("compiler.luce", "luce")
+        self.base = table.string("compiler.luce_base", "luce-base")
+
+pub func defaults() -> str:
+    return "# luced user settings. Save to apply font/compiler changes.\n# Window dimensions apply on the next launch. Empty font_family uses the OS monospace face.\n\n[editor]\nfont_family = \"\"\nfont_size = 14.0\n\n[window]\nwidth = 1180\nheight = 800\n\n[compiler]\nluce = \"luce\"\nluce_base = \"luce-base\"\n"

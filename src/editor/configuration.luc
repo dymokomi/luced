@@ -1,0 +1,76 @@
+## Validate both files before applying a new configuration. Invalid edits stay
+## on disk for correction; a failed revision is reported once until it changes.
+from configuration.store import Store
+from configuration.settings import Settings
+from configuration.theme import Appearance
+from editor.options import Options
+from ui import Application, Font, Layout
+from workspace.controller import Workspace
+from commands.runner import Runner
+
+pub class Configuration:
+    pub let store: Store
+    let font: Font
+    let app: Application
+    let root: Layout
+    let workspace: Workspace
+    let runner: Runner
+    let options: Options
+    var settings_text: str
+    var theme_text: str
+    var family: str
+    var elapsed: float = 0.0
+
+    pub func init(self, store: Store, font: Font, app: Application, root: Layout,
+                  workspace: Workspace, runner: Runner, options: Options, family: str) -> unit!:
+        self.store = store
+        self.font = font
+        self.app = app
+        self.root = root
+        self.workspace = workspace
+        self.runner = runner
+        self.options = options
+        self.settings_text = store.read_settings()
+        self.theme_text = store.read_theme()
+        self.family = family
+
+    pub func edit_settings(self) -> unit!:
+        self.workspace.open(self.store.settings_path)
+
+    pub func edit_theme(self) -> unit!:
+        self.workspace.open(self.store.theme_path)
+
+    pub func reload(self) -> unit!:
+        self.apply(self.store.read_settings(), self.store.read_theme()) catch failure:
+            self.workspace.report("Configuration: " + failure.message)
+
+    func apply(self, settings_text: str, theme_text: str) -> unit!:
+        self.settings_text = settings_text
+        self.theme_text = theme_text
+        let settings = Settings(settings_text) catch failure:
+            error(failure.code, "settings.toml: " + failure.message)
+        let appearance = Appearance(theme_text) catch failure:
+            error(failure.code, "theme.toml: " + failure.message)
+        if self.font.size() != settings.font_size or self.family != settings.font_family:
+            self.font.configure(settings.font_size, settings.font_family)
+            self.family = settings.font_family
+        self.workspace.set_syntax(appearance.syntax)
+        self.app.set_theme(appearance.theme)
+        self.root.invalidate()
+        self.runner.configure(self.options.luce if self.options.luce_override else settings.luce,
+            self.options.base if self.options.base_override else settings.base)
+        self.workspace.report("Configuration reloaded. Window dimensions apply on next launch.")
+
+    pub func poll(self, elapsed: float) -> unit!:
+        self.elapsed += elapsed
+        if self.elapsed < 0.5:
+            return
+        self.elapsed = 0.0
+        self.changed() catch failure:
+            self.workspace.report("Configuration: " + failure.message)
+
+    func changed(self) -> unit!:
+        let settings = self.store.read_settings()
+        let theme = self.store.read_theme()
+        if settings != self.settings_text or theme != self.theme_text:
+            self.apply(settings, theme)

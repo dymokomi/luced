@@ -2,36 +2,27 @@
 ## change signal, so analysis and decoration publication finish before drawing.
 from ui import TextEditor, Highlight
 from language.syntax import tokenize
-from gpu import Color
+from language.appearance import SyntaxTheme
 from language.folding import Line
 import language.folding as folding
 
-pub class SyntaxTheme:
-    pub func color(self, kind: str) -> Color:
-        if kind == "keyword":
-            return Color(0.55, 0.26, 0.65)
-        if kind == "string":
-            return Color(0.39, 0.58, 0.28)
-        if kind == "comment":
-            return Color(0.19, 0.32, 0.31)
-        if kind == "number":
-            return Color(0.72, 0.43, 0.19)
-        if kind == "type":
-            return Color(0.12, 0.54, 0.65)
-        return Color(0.57, 0.64, 0.36)
-
 pub class Highlighter:
     let editor: TextEditor
-    let theme: SyntaxTheme
+    var theme: SyntaxTheme
     var lines: list[Line]
     var version: int = -1
     pub var scanned_lines: int = 0
 
     pub func init(self, editor: TextEditor, theme: SyntaxTheme? = none):
         self.editor = editor
-        let selected = theme else SyntaxTheme()
+        let selected = theme else SyntaxTheme({})
         self.theme = selected
         self.lines = []
+
+    pub func set_theme(self, theme: SyntaxTheme) -> unit!:
+        self.theme = theme
+        self.version = -1
+        self.update()
 
     pub func update(self) -> unit!:
         self.scanned_lines = 0

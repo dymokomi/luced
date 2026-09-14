@@ -8,8 +8,8 @@ import workspace.paths as paths
 
 pub class Runner:
     let output: TextEditor
-    let luce: str
-    let base: str
+    var luce: str
+    var base: str
     var command: Command? = none
     var prefix: str = ""
     var revision: int = -1
@@ -28,6 +28,10 @@ pub class Runner:
 
     pub func busy(self) -> bool:
         return self.command != none
+
+    pub func configure(self, luce: str, base: str):
+        self.luce = luce
+        self.base = base
 
     pub func build(self, source: str, run: bool) -> unit!:
         if self.busy():

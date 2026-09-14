@@ -1,10 +1,14 @@
-## Session construction, signal ownership and shutdown live together. Views
-## declare structure; Workspace handles documents; Runner owns child processes.
-from ui import Application, Font, Theme
+## Session construction composes configuration, commands, named views and the
+## workspace. Interaction policy stays in those components, not the entry point.
+from ui import Application, Font
 from interop import Connection
 from editor.options import Options
 from editor.actions import EditorActions
 from editor.views import EditorView
+from editor.configuration import Configuration
+from configuration.store import Store
+from configuration.settings import Settings
+from configuration.theme import Appearance
 from workspace.controller import Workspace
 from workspace.explorer import Explorer
 from commands.runner import Runner
@@ -15,40 +19,107 @@ pub class Editor:
     pub let app: Application
     pub let workspace: Workspace
     pub let runner: Runner
-    let actions: EditorActions
+    pub let view: EditorView
+    pub let configuration: Configuration
+    pub let actions: EditorActions
     let options: Options
     let connections: list[Connection]
 
     pub func init(self, options: Options) -> unit!:
-        let font = Font(size = 14.0)
+        let store = Store(options.config_directory)
+        var warning = ""
+        let settings = Settings(store.read_settings()) catch failure:
+            warning = "settings.toml: " + failure.message
+            recover Settings()
+        let appearance = Appearance(store.read_theme()) catch failure:
+            warning += " theme.toml: " + failure.message
+            recover Appearance()
+        var family = settings.font_family
+        let font = Font(size = settings.font_size, family = family) catch failure:
+            warning += " Font: " + failure.message
+            family = ""
+            recover Font()
         let absolute = files.absolute_path(options.location)
         let is_file = files.path_kind(absolute) == files.FileKind.regular
         let explorer = Explorer(paths.parent(absolute) if is_file else absolute)
         let actions = EditorActions()
         let view = EditorView(explorer, actions, font)
-        let app = Application(view.body, title = "luced", width = 1180, height = 800, theme = Theme())
-        let runner = Runner(view.output.output, options.luce, options.base)
+        let app = Application(view.body, title = "luced", width = settings.width, height = settings.height, theme = appearance.theme)
+        let runner = Runner(view.output.output, options.luce if options.luce_override else settings.luce,
+            options.base if options.base_override else settings.base)
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.directory,
             view.editor.title, view.status, view.editor.host, runner, font)
+        workspace.set_syntax(appearance.syntax)
+        let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
         self.app = app
         self.workspace = workspace
         self.runner = runner
+        self.view = view
+        self.configuration = configuration
         self.actions = actions
         self.options = options
-        let connections = actions.connect(workspace)
-        connections.append(view.sidebar.listing.on_activate(workspace.activate))
-        connections.append(app.on_frame(self.frame))
-        self.connections = connections
+        self.connections = []
+        self.connect()
         app.set_actions(actions.all)
         app.set_close_handler(workspace.can_close)
         app.set_error_handler(workspace.report)
         if is_file:
             workspace.open(absolute)
+        if warning != "":
+            workspace.report(warning)
         actions.update(workspace, runner.busy())
+
+    func connect(self) -> unit!:
+        for connection in self.actions.connect(self.workspace): self.connections.append(connection)
+        for connection in self.actions.files.connect(self.workspace, self.view.prompt): self.connections.append(connection)
+        self.connections.append(self.actions.palette.on_trigger(self.open_palette))
+        self.connections.append(self.actions.settings.on_trigger(self.configuration.edit_settings))
+        self.connections.append(self.actions.theme.on_trigger(self.configuration.edit_theme))
+        self.connections.append(self.actions.reload.on_trigger(self.configuration.reload))
+        self.connections.append(self.actions.next_pane.on_trigger(self.next_pane))
+        self.connections.append(self.actions.previous_pane.on_trigger(self.previous_pane))
+        self.connections.append(self.actions.focus_explorer.on_trigger(self.focus_explorer))
+        self.connections.append(self.actions.focus_editor.on_trigger(self.workspace.focus_editor))
+        self.connections.append(self.actions.focus_output.on_trigger(self.focus_output))
+        self.connections.append(self.view.sidebar.listing.on_activate(self.workspace.activate))
+        self.connections.append(self.view.sidebar.context.on_open(self.actions.files.update))
+        self.connections.append(self.view.editor.context.on_open(self.update_actions))
+        self.connections.append(self.view.output.context.on_open(self.actions.output.update))
+        self.connections.append(self.app.on_frame(self.frame))
+
+    func update_actions(self):
+        self.actions.update(self.workspace, self.runner.busy())
+
+    pub func open_palette(self) -> unit!:
+        self.update_actions()
+        self.view.palette.open()
+
+    pub func focus_explorer(self) -> unit!:
+        self.app.focus(self.view.sidebar.listing.layout())
+
+    pub func focus_output(self) -> unit!:
+        self.app.focus(self.view.output.output.layout())
+
+    pub func next_pane(self) -> unit!:
+        if self.view.sidebar.body.layout().contains_focus():
+            self.workspace.focus_editor()
+        elif self.view.editor.body.layout().contains_focus():
+            self.focus_output()
+        else:
+            self.focus_explorer()
+
+    pub func previous_pane(self) -> unit!:
+        if self.view.output.body.layout().contains_focus():
+            self.workspace.focus_editor()
+        elif self.view.editor.body.layout().contains_focus():
+            self.focus_explorer()
+        else:
+            self.focus_output()
 
     func frame(self, elapsed: float) -> unit!:
         self.workspace.frame(elapsed)
-        self.actions.update(self.workspace, self.runner.busy())
+        self.configuration.poll(elapsed)
+        self.update_actions()
 
     pub func run(self) -> unit!:
         self.app.run(frame_limit = 12 if self.options.smoke else 0)
@@ -56,6 +127,7 @@ pub class Editor:
     pub func close(self):
         self.app.close()
         self.workspace.close()
-        for connection in self.connections:
-            connection.disconnect()
+        for connection in self.connections: connection.disconnect()
         self.connections.clear()
+        self.actions.editing.close()
+        self.actions.output.close()

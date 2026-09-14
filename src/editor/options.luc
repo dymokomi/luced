@@ -8,6 +8,9 @@ pub class Options:
     pub var location: str = "."
     pub var luce: str = "luce"
     pub var base: str = "luce-base"
+    pub var config_directory: str = ""
+    pub var luce_override: bool = false
+    pub var base_override: bool = false
 
     pub func init(self, arguments: list[str]) -> unit!:
         var index = 0
@@ -17,15 +20,21 @@ pub class Options:
                 self.help = true
             elif argument == "--smoke":
                 self.smoke = true
-            elif argument == "--luce" or argument == "--base":
+            elif argument == "--luce" or argument == "--base" or argument == "--config-dir":
                 index += 1
                 if index >= arguments.length:
-                    error(ui.invalid, argument + " needs a compiler path")
+                    error(ui.invalid, argument + " needs a path")
+                if argument == "--config-dir":
+                    self.config_directory = arguments[index]
+                    index += 1
+                    continue
                 let compiler = files.absolute_path(arguments[index])
                 if argument == "--luce":
                     self.luce = compiler
+                    self.luce_override = true
                 else:
                     self.base = compiler
+                    self.base_override = true
             elif argument.starts_with("--"):
                 error(ui.invalid, "Unknown option: " + argument)
             else:
@@ -33,4 +42,4 @@ pub class Options:
             index += 1
 
     pub func print_help(self):
-        print("usage: luced [FILE | DIRECTORY] [--luce COMPILER] [--base COMPILER] [--smoke]")
+        print("usage: luced [FILE | DIRECTORY] [--luce COMPILER] [--base COMPILER] [--config-dir DIRECTORY] [--smoke]")

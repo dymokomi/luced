@@ -14,6 +14,9 @@ p.add_argument('--luce', type=Path, default=ROOT.parent / 'luce/build/luce')
 p.add_argument('--source', type=Path, default=ROOT / 'src/main.luc')
 p.add_argument('--fold', action='store_true', help='capture the selected file with code folded')
 p.add_argument('--menu', action='store_true', help='capture the File popup through keyboard input')
+p.add_argument('--palette', action='store_true', help='capture command search')
+p.add_argument('--context', choices=['editor', 'files', 'output'], help='capture a right-click menu')
+p.add_argument('--prompt', action='store_true', help='capture the new-file prompt')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
 a = p.parse_args()
@@ -80,12 +83,29 @@ pub func main(arguments: list[str]) -> int!:
             probe.begin("luced")
             captured = true)
 """
+    if a.menu or a.palette or a.context:
+        source = 'from ui import Event\nfrom input import EventKind' + (', Key' if a.menu or a.palette else '') + '\n' + source
     if a.menu:
-        source = 'from ui import Event\nfrom input import EventKind, Key\n' + source
         source = source.replace('        if captured:', """        if frames == 10:
             editor.app.dispatch(Event(cancelled = true))
             editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.tab))
             editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.down))
+        if captured:""")
+    if a.palette:
+        source = source.replace('        if captured:', """        if frames == 10:
+            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.p, meta = true))
+            for scalar in [101, 100, 105, 116]:
+                editor.app.dispatch(Event(kind = EventKind.text_input, codepoint = scalar))
+        if captured:""")
+    if a.context:
+        target = {'editor': 'editor.view.editor.context', 'files': 'editor.view.sidebar.context', 'output': 'editor.view.output.context'}[a.context]
+        source = source.replace('        if captured:', f"""        if frames == 10:
+            let bounds = {target}.layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_down, button = 1, x = bounds.x + 120.0, y = bounds.y + 30.0))
+        if captured:""")
+    if a.prompt:
+        source = source.replace('        if captured:', """        if frames == 10:
+            editor.actions.files.new_file.trigger()
         if captured:""")
     if a.fold:
         source = source.replace('        if captured:', """        if frames == 10:
@@ -97,5 +117,5 @@ pub func main(arguments: list[str]) -> int!:
     main.write_text(source)
     binary = work / 'preview'
     subprocess.run([str(a.luce.resolve()), 'build', str(main), '--native', '-o', str(binary)], check=True, env=dict(os.environ, LUCE_BASE=str(a.base.resolve())), timeout=180)
-    subprocess.run([str(binary), str(a.source.resolve()), '--smoke', '--luce', str(a.luce.resolve()), '--base', str(a.base.resolve())], check=True, timeout=30)
+    subprocess.run([str(binary), str(a.source.resolve()), '--smoke', '--config-dir', str(work / 'configuration'), '--luce', str(a.luce.resolve()), '--base', str(a.base.resolve())], check=True, timeout=30)
 print(a.output.resolve())

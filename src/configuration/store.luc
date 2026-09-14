@@ -1,0 +1,34 @@
+## File ownership is separate from parsing and application. Defaults are created
+## exclusively; malformed or existing user files are never rewritten at startup.
+import files
+import workspace.paths as paths
+import configuration.settings as settings
+import configuration.theme as theme
+
+pub class Store:
+    pub let directory: str
+    pub let settings_path: str
+    pub let theme_path: str
+
+    pub func init(self, directory: str = "") -> unit!:
+        let chosen = directory if directory != "" else paths.join(files.home_directory(), ".luced")
+        files.ensure_directory(chosen)
+        let absolute = files.absolute_path(chosen)
+        let settings_path = paths.join(absolute, "settings.toml")
+        let theme_path = paths.join(absolute, "theme.toml")
+        create_default(settings_path, settings.defaults())
+        create_default(theme_path, theme.defaults())
+        self.directory = absolute
+        self.settings_path = settings_path
+        self.theme_path = theme_path
+
+    pub func read_settings(self) -> str!:
+        return files.read_text(self.settings_path, limit = 65536)
+
+    pub func read_theme(self) -> str!:
+        return files.read_text(self.theme_path, limit = 65536)
+
+func create_default(path: str, contents: str) -> unit!:
+    files.create_text(path, contents) catch failure:
+        if failure.code != files.already_exists:
+            error(failure.code, failure.message)

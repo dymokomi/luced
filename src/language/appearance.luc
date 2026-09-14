@@ -1,0 +1,31 @@
+## Syntax colors are independent of token discovery and UI layout.
+from gpu import Color
+
+pub class SyntaxTheme:
+    pub let keyword_color: Color
+    pub let string_color: Color
+    pub let comment_color: Color
+    pub let number_color: Color
+    pub let type_color: Color
+    pub let other_color: Color
+
+    pub func init(self, colors: map[str, Color]):
+        self.keyword_color = colors["keyword"] else Color(0.55, 0.26, 0.65)
+        self.string_color = colors["string"] else Color(0.39, 0.58, 0.28)
+        self.comment_color = colors["comment"] else Color(0.19, 0.32, 0.31)
+        self.number_color = colors["number"] else Color(0.72, 0.43, 0.19)
+        self.type_color = colors["type"] else Color(0.12, 0.54, 0.65)
+        self.other_color = colors["other"] else Color(0.57, 0.64, 0.36)
+
+    pub func color(self, kind: str) -> Color:
+        if kind == "keyword":
+            return self.keyword_color
+        if kind == "string":
+            return self.string_color
+        if kind == "comment":
+            return self.comment_color
+        if kind == "number":
+            return self.number_color
+        if kind == "type":
+            return self.type_color
+        return self.other_color
