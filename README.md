@@ -192,13 +192,19 @@ offers **Split Vertical** (side by side), **Split Horizontal** (above/below) and
 **Add Tab**. Each creates an empty editor ready for a file from the explorer.
 
 Drag a tab onto another header or the middle of its content to stack it there.
-Drop over a content edge to split that group. A translucent preview shows the
-result before release; Escape cancels. Empty split branches collapse. Explorer
+Drop over a content edge to split that group. When dragging starts, the panel
+detaches visually and its neighbors expand. A floating filename follows the
+pointer, and the destination outline uses that expanded layout. Escape or an
+outside release restores the original layout, including split sizes and tab order. Empty split branches collapse. Explorer
 and output panels can move or stack with document tabs too. F6 navigation follows
 the visible groups; the explicit explorer/editor/output shortcuts reveal hidden
 tabs before focusing their content.
 
-See the native captures of a [proposed split](docs/docking-preview.png) and
+Text editors, clickable controls, pane headers and resize handles show the
+appropriate system cursor. Dragging keeps a grabbing cursor over a valid target
+and a forbidden cursor outside the workspace.
+
+See the native captures of a [detached pane and proposed split](docs/docking-preview.png) and
 [an editor stacked with Output](docs/docking-tabs.png).
 
 `src/editor/panel.luc` defines one editor panel; `src/workspace/editors.luc` owns
