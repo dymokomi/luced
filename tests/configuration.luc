@@ -35,6 +35,7 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     assert(refused)
     files.write_text(store.settings_path, settings.defaults())
     assert(Appearance("[popup]\nshadow_opacity = 0.25\nshadow_offset = 6\n").theme.shadow_opacity == 0.25)
+    assert(Appearance("[layout]\nheader_inset_cells = 2\n").theme.header_inset_cells == 2.0)
     refused = false
     discard(Appearance("[popup]\nshadow_opacity = 2\n") catch failure:
         refused = true

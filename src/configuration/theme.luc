@@ -12,7 +12,7 @@ pub class Appearance:
 
     pub func init(self, source: str = "") -> unit!:
         let table = Table(source)
-        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.pressed", "colors.border", "colors.active_border", "colors.gutter", "colors.hover", "colors.hover_border", "colors.gutter_active", "colors.shadow", "popup.shadow_offset", "popup.shadow_opacity", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.number", "syntax.type", "syntax.other"])
+        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.pressed", "colors.border", "colors.active_border", "colors.gutter", "colors.hover", "colors.hover_border", "colors.gutter_active", "colors.shadow", "popup.shadow_offset", "popup.shadow_opacity", "layout.header_inset_cells", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.number", "syntax.type", "syntax.other"])
         var theme = Theme()
         theme.background = read_color(table, "colors.background", theme.background)
         theme.panel = read_color(table, "colors.panel", theme.panel)
@@ -31,6 +31,7 @@ pub class Appearance:
         theme.shadow = read_color(table, "colors.shadow", theme.shadow)
         theme.shadow_offset = table.number("popup.shadow_offset", theme.shadow_offset, 0.0, 32.0)
         theme.shadow_opacity = table.number("popup.shadow_opacity", theme.shadow_opacity, 0.0, 1.0)
+        theme.header_inset_cells = table.number("layout.header_inset_cells", theme.header_inset_cells, 0.0, 4.0)
         var syntax: map[str, Color] = {}
         syntax["keyword"] = read_color(table, "syntax.keyword", Color(0.55, 0.26, 0.65))
         syntax["string"] = read_color(table, "syntax.string", Color(0.39, 0.58, 0.28))
@@ -58,4 +59,4 @@ func read_color(table: Table, key: str, fallback: Color) -> Color!:
     return Color(components[0], components[1], components[2])
 
 pub func defaults() -> str:
-    return "# luced theme. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#1D232E\"\npanel = \"#282F39\"\nforeground = \"#D7DEEA\"\nmuted = \"#8B9EB3\"\nselection = \"#355D81\"\naccent = \"#7CD4F6\"\nbutton = \"#323B48\"\npressed = \"#42596F\"\nborder = \"#455261\"\nactive_border = \"#598199\"\ngutter = \"#282F39\"\nhover = \"#3C4855\"\nhover_border = \"#556979\"\ngutter_active = \"#42596F\"\nshadow = \"#000000\"\n\n[popup]\nshadow_offset = 4.0\nshadow_opacity = 0.35\n\n[syntax]\nkeyword = \"#C48BD3\"\nstring = \"#A8C890\"\ncomment = \"#799997\"\nnumber = \"#DDAF79\"\ntype = \"#61C2D3\"\nother = \"#C7D1A2\"\n"
+    return "# luced theme. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#1D232E\"\npanel = \"#282F39\"\nforeground = \"#D7DEEA\"\nmuted = \"#8B9EB3\"\nselection = \"#355D81\"\naccent = \"#7CD4F6\"\nbutton = \"#323B48\"\npressed = \"#42596F\"\nborder = \"#455261\"\nactive_border = \"#598199\"\ngutter = \"#282F39\"\nhover = \"#3C4855\"\nhover_border = \"#556979\"\ngutter_active = \"#42596F\"\nshadow = \"#000000\"\n\n[popup]\nshadow_offset = 4.0\nshadow_opacity = 0.35\n\n[layout]\nheader_inset_cells = 1.5\n\n[syntax]\nkeyword = \"#C48BD3\"\nstring = \"#A8C890\"\ncomment = \"#799997\"\nnumber = \"#DDAF79\"\ntype = \"#61C2D3\"\nother = \"#C7D1A2\"\n"

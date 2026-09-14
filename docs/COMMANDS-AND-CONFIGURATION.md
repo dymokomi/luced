@@ -117,6 +117,18 @@ Hover uses `colors.hover` for controls and gutter rows, and `hover_border` for
 panes. Keyboard focus uses `active_border` and takes precedence. The caret's
 line-number row uses `gutter_active`, including while a menu is open.
 
+Pane title bars share their frame's normal, hover and focus color. The leading
+icon badge uses `panel`, its arrow ending is vector geometry, and its horizontal
+spacing is configurable in character cells:
+
+```toml
+[layout]
+header_inset_cells = 1.5
+```
+
+This accepts 0–4 cells and follows the shared font's advance. Both title and body
+retain the same font size; changing the font updates header and icon geometry.
+
 The application checks for changed contents every half second and validates both
 files before applying them. Font changes update the shared `Font` object used by
 every control. Theme-only changes retain its glyph cache. Syntax colors replace

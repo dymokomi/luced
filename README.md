@@ -3,14 +3,17 @@
 A small native code editor written in **Luce**, built with the **luce-ui** Base
 library. It has a file explorer, editable monospace source pane, Luce/Luce Base
 syntax highlighting and folding, and a compiler/program output pane. The three
-panes have themed borders and draggable dividers.
+panes have themed borders and draggable dividers. Their title bars share the
+frame color, with padded vector icon badges and arrow endings. The explorer has
+folder and file-type icons; the source header shows the filename first and its
+directory as secondary text.
 Right-click menus, command search and editable user configuration are shared
 through ordinary luce-ui components.
 Popups have sharp shadows. Open top-level menus switch as the pointer crosses
 their titles; Left/Right also switch. Controls and pane borders respond to hover.
 See the [native menu preview](docs/menu-hover.png).
 
-![luced with compact controls and named view composition](docs/preview.png)
+![luced with joined pane headers and vector file icons](docs/preview.png)
 
 Open files retain their own selection, scrolling, folds, unsaved edits and undo history.
 Saves replace files atomically, preserve existing permissions and CRLF line
@@ -97,6 +100,10 @@ them within half a second, or choose **Reload Configuration**. Font changes appl
 to all controls together; window dimensions apply at the next launch. Compiler
 paths supplied on the command line override the file.
 
+Pane header spacing uses `[layout] header_inset_cells` in `theme.toml` (default
+1.5 character cells). Header backgrounds follow `border`, `hover_border` and
+`active_border`; their icon badges use `panel`.
+
 Both files are validated before application. Invalid edits remain available for
 correction, with an error in the status bar and the current configuration retained.
 Malformed startup files use defaults and report the problem. The supported TOML
@@ -145,7 +152,10 @@ scalars; 32 documents may remain open. See [the checklist](docs/PLAN.md) and
 
 ## Framework iteration
 
-Chrome uses one font line per row and one character cell of control inset.
+Chrome uses one font line per row, one character cell of control inset and
+1.5 cells of pane header inset. File symbols are ordinary `ListItem` presentation
+data; `src/editor/file_items.luc` maps explorer entries to icons, while the
+filesystem model stays independent of UI.
 Colors and density come from luce-ui's inherited Theme; menus, buttons and
 shortcuts share Action instances. Popup placement and focus belong to the
 framework. The editor's named views are in `src/editor/views.luc`.

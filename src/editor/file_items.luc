@@ -1,0 +1,20 @@
+## File presentation belongs to the editor. The explorer supplies names and kinds;
+## the UI library receives ordinary rows with no filesystem or language policy.
+from ui import IconKind, ListItem
+from workspace.explorer import Entry
+
+pub func icon(path: str) -> IconKind:
+    if path.ends_with(".luc") or path.ends_with(".lucb"):
+        return IconKind.code
+    if path.ends_with(".toml") or path.ends_with(".yaml") or path.ends_with(".json"):
+        return IconKind.settings
+    return IconKind.file
+
+pub func present(entries: list[Entry]) -> list[ListItem]:
+    var rows: list[ListItem] = []
+    for entry in entries:
+        var symbol = icon(entry.name)
+        if entry.directory:
+            symbol = IconKind.folder_open if entry.name == ".." else IconKind.folder
+        rows.append(ListItem(entry.name, symbol))
+    return rows

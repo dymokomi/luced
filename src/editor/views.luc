@@ -1,45 +1,43 @@
 ## Named view components expose only the controls that the workspace updates.
 ## Geometry uses font cells and text lines; continuous GPU content still fills
 ## the remaining area. Menus and toolbars share the same native actions.
-from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Pane, SplitView, Axis, ContextMenu, CommandPalette, TextPrompt
+from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Pane, PaneHeader, IconKind, SplitView, Axis, ContextMenu, CommandPalette, TextPrompt
 from editor.actions import EditorActions
 from workspace.explorer import Explorer
 import workspace.paths as paths
+import editor.file_items as file_items
 
 pub class Sidebar:
-    pub let directory: Text
+    pub let directory: PaneHeader
     pub let listing: ListView
     pub let body: Pane
     pub let context: ContextMenu
 
     pub func init(self, explorer: Explorer, actions: EditorActions, font: Font) -> unit!:
-        let directory = Text(paths.short(explorer.directory, 24), font = font)
-        let listing = ListView(explorer.labels(), font = font)
+        let directory = PaneHeader("FILES", icon = IconKind.folder_open, detail = paths.name(explorer.directory), font = font)
+        let listing = ListView(file_items.present(explorer.entries), font = font)
         let context = ContextMenu(listing, actions.files.all, font = font)
-        let body = VStack([Toolbar([directory], font = font), context], spacing = 0.0)
         self.context = context
         self.directory = directory
         self.listing = listing
-        self.body = Pane(body, minimum = Size(140.0, 100.0))
+        self.body = Pane(context, header = directory, minimum = Size(140.0, 100.0))
 
 pub class EditorPane:
-    pub let title: Text
+    pub let title: PaneHeader
     pub let host: VStack
     pub let body: Pane
     pub let context: ContextMenu
 
     pub func init(self, actions: EditorActions, font: Font) -> unit!:
-        let title = Text("Open a file from the explorer", font = font)
+        let title = PaneHeader("EDITOR", icon = IconKind.code, font = font)
         let welcome = TextEditor("luced\n\nChoose a file from the explorer to begin.\n\nCmd/Ctrl+S        Save\nCmd/Ctrl+Shift+S  Save all\nCmd/Ctrl+B        Build\nF5               Build and run\nShift+F5         Stop\nCtrl+Tab         Move between controls\n", read_only = true, line_numbers = false, font = font)
         let host = VStack([welcome], spacing = 0.0)
         host.layout().set_flex()
         let context = ContextMenu(host, actions.editing.all + [actions.save, actions.fold, actions.fold_all, actions.unfold_all], font = font)
-        let body = VStack([Toolbar([title], font = font), context], spacing = 0.0)
-        body.layout().set_flex()
         self.context = context
         self.title = title
         self.host = host
-        self.body = Pane(body, minimum = Size(240.0, 100.0))
+        self.body = Pane(context, header = title, minimum = Size(240.0, 100.0))
 
 pub class OutputPane:
     pub let output: TextEditor
@@ -50,10 +48,10 @@ pub class OutputPane:
         let output = TextEditor("Compiler and program output will appear here.\n", read_only = true, line_numbers = false, font = font)
         actions.output.bind(output)
         let context = ContextMenu(output, actions.output.all, font = font)
-        let body = VStack([Toolbar([Text("OUTPUT", font = font)], font = font), context], spacing = 0.0)
+        let title = PaneHeader("OUTPUT", icon = IconKind.terminal, font = font)
         self.context = context
         self.output = output
-        self.body = Pane(body, minimum = Size(240.0, 80.0))
+        self.body = Pane(context, header = title, minimum = Size(240.0, 80.0))
 
 pub class EditorView:
     pub let sidebar: Sidebar

@@ -1,4 +1,4 @@
-from ui import Application, Text, TextEditor, ListView, VStack
+from ui import Application, Text, TextEditor, ListView, VStack, PaneHeader
 from workspace.controller import Workspace
 from workspace.document import Document
 from workspace.explorer import Explorer
@@ -11,6 +11,7 @@ import ui
 import workspace.paths as paths
 import files
 import thread
+import editor.file_items as file_items
 from configuration_tests import configuration
 
 pub func main(arguments: list[str]) -> int!:
@@ -55,12 +56,12 @@ pub func main(arguments: list[str]) -> int!:
     assert(spans[1].start == 4 and spans[1].end == 7)
     assert(spans[2].start == 15 and spans[2].end == 19)
     let explorer = Explorer(root)
-    let listing = ListView(explorer.labels())
+    let listing = ListView(file_items.present(explorer.entries))
     let host = VStack([Text("placeholder")])
     let app = Application(host)
     let output = TextEditor("", read_only = true)
     let runner = Runner(output, arguments[1], arguments[2])
-    let workspace = Workspace(app, explorer, listing, Text("directory"), Text("file"), Text("status"), host, runner)
+    let workspace = Workspace(app, explorer, listing, PaneHeader("directory"), PaneHeader("file"), Text("status"), host, runner)
     workspace.open(source)
     workspace.frame(0.2)
     assert(workspace.can_close())

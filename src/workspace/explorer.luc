@@ -35,9 +35,3 @@ pub class Explorer:
         let parent = paths.parent(absolute)
         self.entries = ([Entry("..", parent, true)] if parent != absolute else []) + directories + regular
         self.directory = absolute
-
-    pub func labels(self) -> list[str]:
-        var labels: list[str] = []
-        for entry in self.entries:
-            labels.append(("/ " if entry.directory else "  ") + entry.name)
-        return labels
