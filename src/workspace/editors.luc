@@ -1,0 +1,171 @@
+## Document-tab lifetime and selection. Docking itself stays in luce-ui; this
+## component decides which document to open and whether a tab may close.
+from ui import Action, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu
+from interop import Connection
+from editor.panel import EditorPanel
+from editor.text_actions import TextActions
+from workspace.document import Document
+from language.appearance import SyntaxTheme
+import files
+import ui
+import workspace.paths as paths
+
+pub class Editors:
+    pub let dock: DStack
+    let anchor: Panel
+    let font: Font
+    let commands: list[Action]
+    let editing: TextActions
+    let tabs: list[EditorPanel]
+    let connections: list[Connection]
+    var active: EditorPanel? = none
+    var last_focused: Panel? = none
+    var syntax: SyntaxTheme? = none
+
+    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Action], editing: TextActions) -> unit!:
+        self.dock = dock
+        self.anchor = anchor
+        self.font = font
+        self.commands = commands
+        self.editing = editing
+        self.tabs = []
+        self.connections = []
+        self.connections.append(dock.on_select(self.selected))
+        self.connections.append(dock.on_add(self.add_requested))
+        self.connections.append(dock.on_close(self.removed))
+        dock.set_close_handler(self.can_close)
+        discard(self.create(anchor, DockPosition.top))
+        dock.set_fraction(anchor, 0.77)
+
+    pub func documents(self) -> list[Document]:
+        var documents: list[Document] = []
+        for tab in self.tabs:
+            if let document = tab.document: documents.append(document)
+        return documents
+
+    func sync_focus(self):
+        for tab in self.tabs:
+            if tab.body.layout().is_visible() and tab.body.layout().contains_focus():
+                let previous = self.last_focused
+                if previous == none or not (previous is tab.body):
+                    self.active = tab
+                    self.last_focused = tab.body
+                return
+
+    pub func current_document(self) -> Document?:
+        self.sync_focus()
+        let active = self.active else return none
+        return active.document
+
+    pub func current_editor(self) -> TextEditor?:
+        let document = self.current_document() else return none
+        return document.editor
+
+    pub func current_panel(self) -> Panel?:
+        self.sync_focus()
+        let active = self.active else return none
+        return active.body
+
+    pub func current_context(self) -> ContextMenu?:
+        self.sync_focus()
+        let active = self.active else return none
+        return active.context
+
+    pub func focus(self) -> unit!:
+        if let active = self.active:
+            self.dock.select(active.body)
+        else:
+            discard(self.create(self.anchor, DockPosition.top))
+
+    pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
+        self.syntax = theme
+        for document in self.documents(): document.set_syntax(theme)
+
+    pub func open(self, path: str) -> unit!:
+        let identity = files.absolute_path(path)
+        for tab in self.tabs:
+            if let document = tab.document:
+                if document.path == identity:
+                    self.dock.select(tab.body)
+                    return
+        let document = Document(identity, self.font, self.syntax)
+        self.sync_focus()
+        var destination: EditorPanel? = none
+        if let active = self.active:
+            if active.document == none: destination = active
+        if destination == none:
+            if let active = self.active:
+                destination = self.create(active.body, DockPosition.tab)
+            else:
+                destination = self.create(self.anchor, DockPosition.top)
+        let tab = destination else return
+        tab.open(document)
+        self.dock.select(tab.body)
+
+    func create(self, relative: Panel?, position: DockPosition) -> EditorPanel!:
+        let tab = EditorPanel(self.commands, self.font)
+        tab.connections.append(tab.context.on_open(func() -> unit!:
+            self.dock.select(tab.body)
+            self.editing.bind(self.current_editor())))
+        self.dock.add(tab.body, relative_to = relative, position = position)
+        self.tabs.append(tab)
+        self.active = tab
+        return tab
+
+    func add_requested(self, request: DockRequest) -> unit!:
+        discard(self.create(request.panel, request.position))
+
+    func selected(self, panel: Panel):
+        self.sync_focus()
+        for tab in self.tabs:
+            if tab.body is panel:
+                self.active = tab
+                var editor: TextEditor? = none
+                if let document = tab.document: editor = document.editor
+                self.editing.bind(editor)
+                return
+
+    func can_close(self, panel: Panel) -> bool!:
+        for tab in self.tabs:
+            if tab.body is panel:
+                if let document = tab.document:
+                    if document.dirty():
+                        error(ui.invalid, "Save or undo changes before closing " + paths.name(document.path))
+        return true
+
+    func removed(self, panel: Panel):
+        var index = 0
+        while index < self.tabs.length:
+            let tab = self.tabs[index]
+            if tab.body is panel:
+                if let active = self.active:
+                    if active is tab: self.active = none
+                if let focused = self.last_focused:
+                    if focused is panel: self.last_focused = none
+                tab.close()
+                discard(self.tabs.remove_at(index))
+                return
+            index += 1
+
+    pub func remove(self, document: Document) -> unit!:
+        for tab in self.tabs:
+            if let current = tab.document:
+                if current is document:
+                    self.dock.remove(tab.body)
+                    return
+
+    pub func changed(self) -> unit!:
+        for tab in self.tabs: tab.update()
+
+    pub func rename(self, source: str, destination: str) -> unit!:
+        for document in self.documents():
+            if document.path == source or document.path.starts_with(source + "/"):
+                document.rename(destination + document.path[source.length..], self.syntax)
+        self.changed()
+
+    pub func close(self):
+        for connection in self.connections: connection.disconnect()
+        self.connections.clear()
+        for tab in self.tabs: tab.close()
+        self.tabs.clear()
+        self.active = none

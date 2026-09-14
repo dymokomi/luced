@@ -39,3 +39,12 @@ Every build uses the native compiler and leaves only requested artifacts.
 - [x] Rasterize grayscale text at the display backing scale through standard GPU coverage.
 - [x] Verify font metrics, transparent backgrounds, ownership, real Metal pixels and editor behavior.
 - [x] Replace the preview with an actual capture of the updated editor.
+
+## Dynamic workspace
+
+- [x] Replace decorative pane arrows with flat tab strips and a trailing add menu.
+- [x] Compose the workspace with luce-ui's reusable Panel and DStack.
+- [x] Keep one persistent editor per open file, with selection and undo history.
+- [x] Support stacking, tab reordering, four edge splits and divider resizing.
+- [x] Preserve file commands, focus shortcuts, context menus and dirty-file checks.
+- [x] Test document identity and command targeting after docking; capture actual previews.

@@ -11,6 +11,7 @@ from configuration.settings import Settings
 from configuration.theme import Appearance
 from workspace.controller import Workspace
 from workspace.explorer import Explorer
+from workspace.editors import Editors
 from commands.runner import Runner
 import workspace.paths as paths
 import files
@@ -47,8 +48,10 @@ pub class Editor:
         let app = Application(view.body, title = "luced", width = settings.width, height = settings.height, theme = appearance.theme)
         let runner = Runner(view.output.output, options.luce if options.luce_override else settings.luce,
             options.base if options.base_override else settings.base)
-        let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.directory,
-            view.editor.title, view.status, view.editor.host, runner, font)
+        let editors = Editors(view.dock, view.output.body, font,
+            actions.editing.all + [actions.save, actions.fold, actions.fold_all, actions.unfold_all], actions.editing)
+        view.dock.set_fraction(view.sidebar.body, 0.22)
+        let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors)
         workspace.set_syntax(appearance.syntax)
         let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
         self.app = app
@@ -83,7 +86,6 @@ pub class Editor:
         self.connections.append(self.actions.focus_output.on_trigger(self.focus_output))
         self.connections.append(self.view.sidebar.listing.on_activate(self.workspace.activate))
         self.connections.append(self.view.sidebar.context.on_open(self.actions.files.update))
-        self.connections.append(self.view.editor.context.on_open(self.update_actions))
         self.connections.append(self.view.output.context.on_open(self.actions.output.update))
         self.connections.append(self.app.on_frame(self.frame))
 
@@ -95,26 +97,16 @@ pub class Editor:
         self.view.palette.open()
 
     pub func focus_explorer(self) -> unit!:
-        self.app.focus(self.view.sidebar.listing.layout())
+        self.view.dock.select(self.view.sidebar.body)
 
     pub func focus_output(self) -> unit!:
-        self.app.focus(self.view.output.output.layout())
+        self.view.dock.select(self.view.output.body)
 
     pub func next_pane(self) -> unit!:
-        if self.view.sidebar.body.layout().contains_focus():
-            self.workspace.focus_editor()
-        elif self.view.editor.body.layout().contains_focus():
-            self.focus_output()
-        else:
-            self.focus_explorer()
+        self.view.dock.focus_next()
 
     pub func previous_pane(self) -> unit!:
-        if self.view.output.body.layout().contains_focus():
-            self.workspace.focus_editor()
-        elif self.view.editor.body.layout().contains_focus():
-            self.focus_explorer()
-        else:
-            self.focus_output()
+        self.view.dock.focus_next(backwards = true)
 
     func frame(self, elapsed: float) -> unit!:
         self.workspace.frame(elapsed)

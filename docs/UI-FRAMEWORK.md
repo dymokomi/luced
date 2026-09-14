@@ -51,8 +51,10 @@ application-specific framework API.
 - [Emacs Font Lock](https://www.gnu.org/software/emacs/manual/html_node/emacs/Font-Lock.html):
   fontification is incremental work associated with changed/visible buffer regions.
 
-This iteration does not attempt docking, native OS menus, a CSS engine, or a
-full semantic language service. Those should extend the same contracts.
+Dynamic workspaces now extend these contracts through luce-ui's `Panel` and
+`DStack`: stable content owners, tab selection, arbitrary split trees and reusable
+drag/drop handling. Luced supplies document creation and close policy. Native OS
+menus, a CSS engine and a full semantic language service remain future work.
 
 ## Validation
 

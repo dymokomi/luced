@@ -2,9 +2,9 @@
 
 A small native code editor written in **Luce**, built with the **luce-ui** Base
 library. It has a file explorer, editable monospace source pane, Luce/Luce Base
-syntax highlighting and folding, and a compiler/program output pane. The three
-panes have themed borders and draggable dividers. Their title bars share the
-frame color, with padded vector icon badges and arrow endings. The explorer has
+syntax highlighting and folding, and a compiler/program output pane. The workspace
+uses tabbed panels with themed borders and resizable splits. Their flat title
+bars share the frame color, with padded vector icons and a trailing `+`. The explorer has
 folder and file-type icons; the source header shows the filename first and its
 directory as secondary text.
 Right-click menus, command search and editable user configuration are shared
@@ -13,7 +13,7 @@ Popups have sharp shadows. Open top-level menus switch as the pointer crosses
 their titles; Left/Right also switch. Controls and pane borders respond to hover.
 See the [native menu preview](docs/menu-hover.png).
 
-![luced with joined pane headers and vector file icons](docs/preview.png)
+![luced with document tabs and a dynamic workspace](docs/preview.png)
 
 Open files retain their own selection, scrolling, folds, unsaved edits and undo history.
 Saves replace files atomically, preserve existing permissions and CRLF line
@@ -59,7 +59,12 @@ program binaries under the nearest package's `build/` directory.
 | Undo / redo | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z; Ctrl+Y also works |
 | Move focus out of the editor | Ctrl+Tab |
 | Scroll | Wheel or touchpad; editor scrollbar also drags |
-| Resize panes | Drag the explorer/code or code/output divider |
+| Add a tab or split | The trailing `+` menu in any pane |
+| Move a panel | Drag its tab or unused header space; center stacks, content edges split |
+| Cancel docking | Escape or release outside the workspace |
+| Close a document tab | Its `×`; unsaved documents stay open |
+| Switch overflowed tabs | Header arrows or wheel |
+| Resize panes | Drag any divider |
 | Switch an open top-level menu | Hover another title, or Left/Right |
 | Resize with keys | Focus a divider, then arrows; Shift moves faster; Home/End reach limits |
 | Toggle a fold | Click its gutter marker; View menu; Cmd/Ctrl+Alt+[ on the header |
@@ -102,7 +107,7 @@ paths supplied on the command line override the file.
 
 Pane header spacing uses `[layout] header_inset_cells` in `theme.toml` (default
 1.5 character cells). Header backgrounds follow `border`, `hover_border` and
-`active_border`; their icon badges use `panel`.
+`active_border`; inactive tabs use `panel`.
 
 Both files are validated before application. Invalid edits remain available for
 correction, with an error in the status bar and the current configuration retained.
@@ -112,7 +117,7 @@ Use `--config-dir DIRECTORY` for an isolated profile; tests and previews do this
 
 ## Structure and tests
 
-- `src/workspace`: files, documents, navigation and application coordination.
+- `src/workspace`: files, documents, document-tab lifetime, navigation and application coordination.
 - `src/language`: a stateful line lexer, incremental highlighting cache, indentation/string folding and syntax palette.
 - `src/editor`: options, shared actions, named pane views and application lifetime.
 - `src/configuration`: scalar TOML parsing, settings/theme schemas and user file storage.
@@ -129,6 +134,7 @@ python3 tools/preview.py --source examples/hello/main.luc
 python3 tools/preview.py --source src/editor/views.luc --fold
 python3 tools/preview.py --source src/editor/views.luc --palette
 python3 tools/preview.py --source src/editor/views.luc --context files
+python3 tools/preview.py --tabs --dock preview
 ```
 
 Tests cover bounded line retokenization, randomized Unicode edits and full-lexer
@@ -136,6 +142,8 @@ equivalence, multiline strings, nested folding across edits, undo/redo, stale de
 external-file conflicts, workspace focus, and real native build/run output.
 Configuration tests cover defaults, invalid input, theme reload, palette commands,
 file prompts, collisions, folder renames, dirty-file deletion and pane shortcuts.
+Workspace tests move live documents between groups, reopen existing tabs, target
+saves after tab clicks, fill new splits and refuse to close unsaved tabs.
 The UI and standard-library repositories have their own control, ownership,
 input, pixel, file and process regression suites. CI runs on all three hosts.
 
@@ -147,7 +155,8 @@ resolution (Menlo on macOS, Consolas on Windows, system monospace on Linux).
 Font shaping, grapheme navigation, accessibility, richer IME presentation,
 search, completion, debugging and language-server integration
 remain future work. Files are bounded to 4 MiB on read and 1,048,576 editor
-scalars; 32 documents may remain open. See [the checklist](docs/PLAN.md) and
+scalars. DStack supports 128 panels, including the explorer/output and empty editor
+tabs, in up to 32 groups. See [the checklist](docs/PLAN.md) and
 [compiler follow-ups](docs/COMPILER-FOLLOWUPS.md).
 
 ## Framework iteration
@@ -174,3 +183,25 @@ and resizing. Folding covers indented blocks and multiline strings in both Luce
 and Luce Base. It preserves source offsets, highlights and undo history; opening
 a parent fold restores its children's collapse state. See the
 [pane and folding design](docs/PANES-AND-FOLDING.md).
+
+## Dynamic workspace
+
+Each open file has its own tab. Reopening a file selects its existing tab; moving
+it preserves text, undo/redo, selection, scroll position and folds. The `+` menu
+offers **Split Vertical** (side by side), **Split Horizontal** (above/below) and
+**Add Tab**. Each creates an empty editor ready for a file from the explorer.
+
+Drag a tab onto another header or the middle of its content to stack it there.
+Drop over a content edge to split that group. A translucent preview shows the
+result before release; Escape cancels. Empty split branches collapse. Explorer
+and output panels can move or stack with document tabs too. F6 navigation follows
+the visible groups; the explicit explorer/editor/output shortcuts reveal hidden
+tabs before focusing their content.
+
+See the native captures of a [proposed split](docs/docking-preview.png) and
+[an editor stacked with Output](docs/docking-tabs.png).
+
+`src/editor/panel.luc` defines one editor panel; `src/workspace/editors.luc` owns
+document-tab selection and close policy. All split geometry, tab controls,
+pointer capture and previews belong to luce-ui's DStack. The current layout lasts
+for the session; saved layouts and floating windows are future work.

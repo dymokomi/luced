@@ -1,0 +1,71 @@
+## Exercise document identity and command targeting through the public editor,
+## including app-created tabs from DStack's native add menu.
+from editor.application import Editor
+from editor.options import Options
+from ui import DockPosition, Event
+from input import EventKind, Key
+import files
+import workspace.paths as paths
+
+pub func workspace_tabs(root: str, luce: str, base: str) -> unit!:
+    let first_path = paths.join(root, "tab-a.luc")
+    let second_path = paths.join(root, "tab-b.luc")
+    let third_path = paths.join(root, "tab-c.luc")
+    files.write_text(first_path, "let alpha = 1\n")
+    files.write_text(second_path, "let beta = 2\n")
+    files.write_text(third_path, "let gamma = 3\n")
+    let editor = Editor(Options([first_path, "--config-dir", paths.join(root, "tab-settings"), "--luce", luce, "--base", base]))
+    editor.app.layout(1000.0, 700.0)
+    let first = editor.workspace.current_editor() else error(files.failed, "first tab missing")
+    let first_panel = editor.workspace.current_panel() else error(files.failed, "first panel missing")
+    first.insert("# unsaved\n")
+    editor.workspace.open(second_path)
+    editor.app.layout(1000.0, 700.0)
+    let second = editor.workspace.current_editor() else error(files.failed, "second tab missing")
+    let second_panel = editor.workspace.current_panel() else error(files.failed, "second panel missing")
+    assert(not (first is second) and editor.view.dock.panel_count() == 4)
+    assert(editor.view.dock.same_group(first_panel, second_panel))
+    editor.workspace.open(first_path)
+    assert(editor.view.dock.panel_count() == 4 and editor.workspace.current_editor() is first)
+    first.undo()
+    assert(first.text() == "let alpha = 1\n")
+    editor.view.dock.move(first_panel, editor.view.output.body, DockPosition.tab)
+    editor.app.layout(1000.0, 700.0)
+    assert(editor.workspace.current_editor() is first)
+    editor.focus_output()
+    editor.app.layout(1000.0, 700.0)
+    assert(not first_panel.layout().is_visible())
+    editor.workspace.focus_editor()
+    editor.app.layout(1000.0, 700.0)
+    assert(first_panel.layout().is_visible() and first.layout().is_focused())
+    let root_bounds = editor.view.dock.layout().bounds()
+    let second_tab = editor.view.dock.tab_bounds(second_panel)
+    click(editor, root_bounds.x + second_tab.x + 8.0, root_bounds.y + second_tab.y + 5.0)
+    assert(editor.workspace.current_editor() is second)
+    second.insert("# saved beta\n")
+    editor.workspace.save()
+    assert(files.read_text(second_path).starts_with("# saved beta"))
+    assert(files.read_text(first_path) == "let alpha = 1\n")
+    let plus = editor.view.dock.add_bounds(second_panel)
+    click(editor, root_bounds.x + plus.x + plus.width * 0.5, root_bounds.y + plus.y + 5.0)
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.enter))
+    assert(editor.view.dock.panel_count() == 5 and editor.view.dock.group_count() == 4)
+    let empty = editor.workspace.current_panel() else error(files.failed, "split did not create an editor")
+    assert(editor.workspace.current_editor() == none)
+    editor.workspace.open(third_path)
+    assert(editor.view.dock.panel_count() == 5 and editor.workspace.current_panel() is empty)
+    editor.app.layout(1000.0, 700.0)
+    let third = editor.workspace.current_editor() else error(files.failed, "empty tab was not filled")
+    third.insert("# keep me\n")
+    let tab = editor.view.dock.tab_bounds(empty)
+    var refused = false
+    click(editor, root_bounds.x + tab.x + tab.width - 5.0, root_bounds.y + tab.y + 5.0) catch failure: refused = true
+    assert(refused and editor.view.dock.panel_count() == 5 and third.text().starts_with("# keep me"))
+    third.undo()
+    click(editor, root_bounds.x + tab.x + tab.width - 5.0, root_bounds.y + tab.y + 5.0)
+    assert(editor.view.dock.panel_count() == 4 and editor.view.dock.group_count() == 3)
+    editor.close()
+
+func click(editor: Editor, x: float, y: float) -> unit!:
+    editor.app.dispatch(Event(kind = EventKind.pointer_down, x = x, y = y))
+    editor.app.dispatch(Event(kind = EventKind.pointer_up, x = x, y = y))

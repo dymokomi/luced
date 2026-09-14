@@ -19,6 +19,8 @@ p.add_argument('--context', choices=['editor', 'files', 'output'], help='capture
 p.add_argument('--prompt', action='store_true', help='capture the new-file prompt')
 p.add_argument('--hover', choices=['edit-menu', 'divider', 'gutter', 'output'], help='capture hover feedback or top-level menu switching')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
+p.add_argument('--tabs', action='store_true', help='open additional source files as tabs')
+p.add_argument('--dock', choices=['menu', 'preview', 'merge', 'left', 'right', 'top', 'bottom'], help='capture dynamic workspace interaction')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
 a = p.parse_args()
 a.output.resolve().parent.mkdir(parents=True, exist_ok=True)
@@ -84,7 +86,7 @@ pub func main(arguments: list[str]) -> int!:
             probe.begin("luced")
             captured = true)
 """
-    if a.menu or a.palette or a.context or a.hover:
+    if a.menu or a.palette or a.context or a.hover or a.dock:
         source = 'from ui import Event\nfrom input import EventKind' + (', Key' if a.menu or a.palette else '') + '\n' + source
     if a.menu:
         source = source.replace('        if captured:', """        if frames == 10:
@@ -99,9 +101,13 @@ pub func main(arguments: list[str]) -> int!:
                 editor.app.dispatch(Event(kind = EventKind.text_input, codepoint = scalar))
         if captured:""")
     if a.context:
-        target = {'editor': 'editor.view.editor.context', 'files': 'editor.view.sidebar.context', 'output': 'editor.view.output.context'}[a.context]
+        target = {'editor': 'context', 'files': 'editor.view.sidebar.context', 'output': 'editor.view.output.context'}[a.context]
+        setup = ''
+        if a.context == 'editor':
+            source = 'from ui import invalid\n' + source
+            setup = '            let context = editor.workspace.current_context() else error(invalid, "preview needs an editor panel")\n'
         source = source.replace('        if captured:', f"""        if frames == 10:
-            let bounds = {target}.layout().bounds()
+{setup}            let bounds = {target}.layout().bounds()
             editor.app.dispatch(Event(kind = EventKind.pointer_down, button = 1, x = bounds.x + 120.0, y = bounds.y + 30.0))
         if captured:""")
     if a.prompt:
@@ -135,6 +141,31 @@ pub func main(arguments: list[str]) -> int!:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.workspace.fold_all()
         if captured:""")
+    if a.dock:
+        source = 'from ui import invalid\n' + source
+        events = '''            let panel = editor.workspace.current_panel() else error(invalid, "preview needs a document panel")
+            let root = editor.view.dock.layout().bounds()
+'''
+        if a.dock == 'menu':
+            events += '''            let bounds = editor.view.dock.add_bounds(panel)
+            editor.app.dispatch(Event(kind = EventKind.pointer_down, x = root.x + bounds.x + bounds.width * 0.5, y = root.y + bounds.y + 5.0))
+            editor.app.dispatch(Event(kind = EventKind.pointer_up, x = root.x + bounds.x + bounds.width * 0.5, y = root.y + bounds.y + 5.0))
+'''
+        else:
+            x, y = {'merge': ('0.5', '0.5'), 'preview': ('0.1', '0.5'), 'left': ('0.1', '0.5'), 'right': ('0.9', '0.5'), 'top': ('0.5', '0.3'), 'bottom': ('0.5', '0.9')}[a.dock]
+            events += f'''            let origin = editor.view.dock.tab_bounds(panel)
+            let destination = editor.view.dock.panel_bounds(editor.view.output.body)
+            let x = root.x + destination.x + destination.width * {x}
+            let y = root.y + destination.y + destination.height * {y}
+            editor.app.dispatch(Event(kind = EventKind.pointer_down, x = root.x + origin.x + 8.0, y = root.y + origin.y + 5.0))
+            editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = x, y = y))
+'''
+            if a.dock != 'preview':
+                events += '            editor.app.dispatch(Event(kind = EventKind.pointer_up, x = x, y = y))\n'
+        source = source.replace('        if captured:', '        if frames == 10:\n' + events + '        if captured:')
+    if a.tabs:
+        for path in [ROOT / 'src/editor/panel.luc', ROOT / 'src/editor/views.luc']:
+            source += '    editor.workspace.open(' + json.dumps(str(path)) + ')\n'
     if a.run:
         source += '    editor.workspace.run()\n'
     source += '    editor.app.run()\n    observed.disconnect()\n    probe.save(' + json.dumps(str(a.output.resolve())) + ')\n    probe.end()\n    editor.close()\n    return 0\n'

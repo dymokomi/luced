@@ -1,8 +1,7 @@
-from ui import Application, Text, TextEditor, ListView, VStack, PaneHeader
-from workspace.controller import Workspace
+from ui import TextEditor
 from workspace.document import Document
-from workspace.explorer import Explorer
-from commands.runner import Runner
+from editor.application import Editor
+from editor.options import Options
 import language.syntax as syntax
 from language.highlighter import Highlighter
 from gpu import Color
@@ -11,8 +10,8 @@ import ui
 import workspace.paths as paths
 import files
 import thread
-import editor.file_items as file_items
 from configuration_tests import configuration
+from workspace_tab_tests import workspace_tabs
 
 pub func main(arguments: list[str]) -> int!:
     language_folding()
@@ -20,6 +19,7 @@ pub func main(arguments: list[str]) -> int!:
     randomized_highlighting()
     let root = arguments[0]
     configuration(root, arguments[1], arguments[2])
+    workspace_tabs(root, arguments[1], arguments[2])
     let source = paths.join(root, "main.luc")
     let original = "pub func main(arguments: list[str]) -> int!:\r\n    print(\"hello from luced\")\r\n    return 0\r\n"
     files.write_text(source, original)
@@ -55,18 +55,15 @@ pub func main(arguments: list[str]) -> int!:
     assert(spans[0].start == 0 and spans[0].end == 3)
     assert(spans[1].start == 4 and spans[1].end == 7)
     assert(spans[2].start == 15 and spans[2].end == 19)
-    let explorer = Explorer(root)
-    let listing = ListView(file_items.present(explorer.entries))
-    let host = VStack([Text("placeholder")])
-    let app = Application(host)
-    let output = TextEditor("", read_only = true)
-    let runner = Runner(output, arguments[1], arguments[2])
-    let workspace = Workspace(app, explorer, listing, PaneHeader("directory"), PaneHeader("file"), Text("status"), host, runner)
-    workspace.open(source)
+    let instance = Editor(Options([source, "--config-dir", paths.join(root, "session"), "--luce", arguments[1], "--base", arguments[2]]))
+    let app = instance.app
+    let workspace = instance.workspace
+    let runner = instance.runner
+    let output = instance.view.output.output
     workspace.frame(0.2)
     assert(workspace.can_close())
-    let editor = host.layout().child(0)
-    app.layout(400.0, 300.0)
+    let editor = workspace.current_editor() else error(ui.invalid, "source was not opened")
+    app.layout(800.0, 600.0)
     assert(editor.layout().is_focused())
     runner.build(source, true)
     var iterations = 0
@@ -86,7 +83,7 @@ pub func main(arguments: list[str]) -> int!:
         iterations += 1
         assert(iterations < 10000000)
     assert(output.text().contains("hello from base") and output.text().ends_with("[Exit 0]\n"))
-    workspace.close()
+    instance.close()
     assert(paths.parent("C:/work") == "C:/")
     assert(paths.parent("/work") == "/")
     print("PASS luced source highlighting, document persistence, conflicts, workspace and native build/run")

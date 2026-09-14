@@ -17,6 +17,11 @@ separates minimum/preferred sizes from handle presentation. Our first SplitView
 composes two children and nests for larger layouts, with live resizing and
 non-collapsing minima. Pane borders remain independent of the splitter.
 
+Luced now uses `DStack` for its workspace. It owns a split tree of tab groups,
+shares the splitter's size distribution rules and keeps each panel's content
+mounted while it moves. The reusable `SplitView` remains suitable for fixed
+two-child composition. See [dynamic workspace controls](../README.md#dynamic-workspace).
+
 Folds hide whole document lines below a header. Text and scalar offsets remain
 unchanged; rendering, hit testing, navigation and scroll extents share one visible
 line map. The widget accepts versioned ranges from any language service. Luce's

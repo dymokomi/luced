@@ -1,0 +1,41 @@
+## One editor tab owns its presentation and subscriptions. Its Document keeps
+## text, history and language analysis when the tab moves to another group.
+from ui import Action, ContextMenu, Font, IconKind, Panel, Size, TextEditor, VStack
+from interop import Connection
+from workspace.document import Document
+import editor.file_items as file_items
+import workspace.paths as paths
+
+pub class EditorPanel:
+    pub let body: Panel
+    pub let context: ContextMenu
+    pub var document: Document? = none
+    let host: VStack
+    pub let connections: list[Connection]
+
+    pub func init(self, actions: list[Action], font: Font) -> unit!:
+        let welcome = TextEditor("Open a file from the explorer.\n\nUse + to add a tab or split this pane.\nDrag a tab to move it between panes.\n", read_only = true, line_numbers = false, font = font)
+        let host = VStack([welcome], spacing = 0.0)
+        host.layout().set_flex()
+        let context = ContextMenu(host, actions, font = font)
+        self.host = host
+        self.context = context
+        self.body = Panel("EDITOR", context, icon = IconKind.code, minimum = Size(180.0, 80.0))
+        self.connections = []
+
+    pub func open(self, document: Document) -> unit!:
+        self.host.set_children([document.editor])
+        self.document = document
+        self.connections.append(document.editor.on_change(self.update))
+        self.update()
+
+    pub func update(self) -> unit!:
+        if let document = self.document:
+            self.body.set_text(paths.name(document.path) + (" *" if document.dirty() else ""))
+            self.body.set_detail(paths.parent(document.path))
+            self.body.set_icon(file_items.icon(document.path))
+
+    pub func close(self):
+        for connection in self.connections: connection.disconnect()
+        self.connections.clear()
+        self.document = none
