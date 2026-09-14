@@ -90,6 +90,9 @@ without opening it; right-clicking selected text preserves the selection.
 Pane dividers show two border edges at rest; their center grip appears on hover,
 dragging or keyboard focus. The gutter highlights the caret's row and gives a
 separate hover cue over line numbers and fold markers.
+The line-number gutter fits the document's largest number, with one character
+cell of padding on each side. It grows and shrinks as lines are added or removed;
+scrolling and folding keep its width stable.
 
 ## User settings and theme
 
