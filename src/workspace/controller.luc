@@ -67,6 +67,21 @@ pub class Workspace:
         self.explorer.open(self.explorer.directory)
         self.listing.set_items(file_items.present(self.explorer.entries))
 
+    pub func hidden_shown(self) -> bool:
+        return self.explorer.show_hidden
+
+    pub func toggle_hidden(self) -> unit!:
+        self.explorer.show_hidden = not self.explorer.show_hidden
+        self.refresh_files()
+
+    pub func paste_into(self, directory: str, source: str, move: bool) -> unit!:
+        let identity = files.absolute_path(source)
+        let target = operations.paste(source, directory, move)
+        if move:
+            self.editors.rename(identity, files.absolute_path(target))
+        self.refresh_files()
+        self.report(("Moved " if move else "Copied ") + paths.name(target))
+
     pub func create_file(self, directory: str, name: str) -> unit!:
         let path = operations.create_file(directory, name)
         self.refresh_files()
@@ -75,11 +90,6 @@ pub class Workspace:
     pub func create_folder(self, directory: str, name: str) -> unit!:
         operations.create_folder(directory, name)
         self.refresh_files()
-
-    pub func duplicate_file(self, path: str) -> unit!:
-        let copied = operations.duplicate(path)
-        self.refresh_files()
-        self.report("Created " + paths.name(copied))
 
     pub func rename_entry(self, source: str, name: str) -> unit!:
         let entry = paths.join(files.absolute_path(paths.parent(source)), paths.name(source))

@@ -89,8 +89,8 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     source.insert("# retained\n")
     editor.workspace.save()
     assert(files.read_text(renamed).starts_with("# retained"))
-    let copied = operations.duplicate(renamed)
-    let second = operations.duplicate(renamed)
+    let copied = operations.paste(renamed, paths.parent(renamed), move = false)
+    let second = operations.paste(renamed, paths.parent(renamed), move = false)
     assert(copied != second and files.read_text(copied) == files.read_text(renamed))
     refused = false
     discard(operations.create_file(root, paths.name(renamed)) catch failure:

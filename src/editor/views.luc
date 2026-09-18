@@ -3,23 +3,32 @@
 ## the remaining area. Menus and toolbars share the same native actions.
 from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt
 from editor.actions import EditorActions
+from editor.file_actions import FileActions
 from workspace.explorer import Explorer
 import workspace.paths as paths
 import editor.file_items as file_items
 
+## The file pane owns a list and a context menu whose entries follow the click:
+## a file, a folder or empty space each get their own commands.
 pub class Sidebar:
     pub let listing: ListView
     pub let body: Panel
     pub let context: ContextMenu
+    let files: FileActions
 
     pub func init(self, explorer: Explorer, actions: EditorActions, font: Font) -> unit!:
         let listing = ListView(file_items.present(explorer.entries), font = font)
-        let context = ContextMenu(listing, actions.files.all, font = font)
+        let context = ContextMenu(listing, actions.files.background_menu(), font = font)
         self.context = context
         self.listing = listing
+        self.files = actions.files
         let panel = Panel("FILES", context, icon = IconKind.folder_open, minimum = Size(140.0, 100.0), closable = false)
         panel.set_detail(paths.name(explorer.directory))
         self.body = panel
+
+    ## Chosen just before the menu opens, once the click has updated the selection.
+    pub func refresh_menu(self) -> unit!:
+        self.context.set_actions(self.files.menu_for_selection())
 
 pub class OutputPane:
     pub let output: TextEditor

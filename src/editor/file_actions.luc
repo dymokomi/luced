@@ -1,5 +1,7 @@
-## File commands own prompt state; the workspace owns filesystem operations and
-## open documents. Context selection is captured before a modal prompt opens.
+## File commands own prompt and clipboard state; the workspace owns filesystem
+## operations and open documents. The right-click menu is context sensitive: the
+## selection decides which of these actions it offers. Selection is captured
+## before a modal prompt opens.
 from ui import Action, TextPrompt
 from interop import Connection
 from workspace.controller import Workspace
@@ -9,53 +11,93 @@ import workspace.paths as paths
 pub class FileActions:
     pub let new_file: Action
     pub let new_folder: Action
-    pub let duplicate: Action
+    pub let cut: Action
+    pub let copy: Action
+    pub let paste: Action
+    pub let copy_path: Action
     pub let rename: Action
     pub let delete: Action
-    pub let copy_path: Action
     pub let refresh: Action
+    pub let show_hidden: Action
     pub let all: list[Action]
     var workspace: Workspace? = none
     var prompt: TextPrompt? = none
     var operation: str = ""
     var target: str = ""
+    var clip_path: str = ""
+    var clip_move: bool = false
+    var hidden_label: bool = false
 
     pub func init(self) -> unit!:
         let new_file = Action("New File…")
         let new_folder = Action("New Folder…")
-        let duplicate = Action("Duplicate File")
+        let cut = Action("Cut")
+        let copy = Action("Copy")
+        let paste = Action("Paste")
+        let copy_path = Action("Copy Path")
         let rename = Action("Rename…")
         let delete = Action("Delete…")
-        let copy_path = Action("Copy Path")
         let refresh = Action("Refresh Files")
+        let show_hidden = Action("Show Hidden Files")
         self.new_file = new_file
         self.new_folder = new_folder
-        self.duplicate = duplicate
+        self.cut = cut
+        self.copy = copy
+        self.paste = paste
+        self.copy_path = copy_path
         self.rename = rename
         self.delete = delete
-        self.copy_path = copy_path
         self.refresh = refresh
-        self.all = [new_file, new_folder, duplicate, rename, delete, copy_path, refresh]
+        self.show_hidden = show_hidden
+        self.all = [new_file, new_folder, cut, copy, paste, copy_path, rename, delete, refresh, show_hidden]
 
     pub func connect(self, workspace: Workspace, prompt: TextPrompt) -> list[Connection]!:
         self.workspace = workspace
         self.prompt = prompt
         return [self.new_file.on_trigger(self.create_file), self.new_folder.on_trigger(self.create_folder),
-            self.duplicate.on_trigger(self.duplicate_file), self.rename.on_trigger(self.rename_file),
-            self.delete.on_trigger(self.delete_file), self.copy_path.on_trigger(self.copy_filename),
-            self.refresh.on_trigger(workspace.refresh_files), prompt.on_submit(self.submit)]
+            self.cut.on_trigger(self.cut_entry), self.copy.on_trigger(self.copy_entry),
+            self.paste.on_trigger(self.paste_entry), self.copy_path.on_trigger(self.copy_filename),
+            self.rename.on_trigger(self.rename_file), self.delete.on_trigger(self.delete_file),
+            self.refresh.on_trigger(workspace.refresh_files), self.show_hidden.on_trigger(self.toggle_hidden),
+            prompt.on_submit(self.submit)]
+
+    ## Menus offered by the file pane, one per kind of right-click target.
+    pub func file_menu(self) -> list[Action]:
+        return [self.cut, self.copy, self.copy_path, self.rename, self.delete]
+
+    pub func folder_menu(self) -> list[Action]:
+        return [self.new_file, self.new_folder, self.paste, self.copy_path, self.rename, self.delete]
+
+    pub func background_menu(self) -> list[Action]:
+        return [self.new_file, self.new_folder, self.paste, self.show_hidden, self.refresh]
+
+    ## Refresh enabled states, then choose the menu for what was clicked: a file,
+    ## a folder, or empty space (also the parent row, which selects nothing).
+    pub func menu_for_selection(self) -> list[Action]:
+        let workspace = self.workspace else return self.background_menu()
+        self.update()
+        if let entry = workspace.selected_entry():
+            return self.folder_menu() if entry.directory else self.file_menu()
+        return self.background_menu()
 
     pub func update(self):
         let workspace = self.workspace else return
-        self.duplicate.set_enabled(false)
+        self.paste.set_enabled(self.clip_path != "")
+        self.cut.set_enabled(false)
+        self.copy.set_enabled(false)
         self.rename.set_enabled(false)
         self.delete.set_enabled(false)
         self.copy_path.set_enabled(false)
         if let entry = workspace.selected_entry():
-            self.duplicate.set_enabled(not entry.directory)
+            self.cut.set_enabled(true)
+            self.copy.set_enabled(not entry.directory)
             self.rename.set_enabled(true)
             self.delete.set_enabled(true)
             self.copy_path.set_enabled(true)
+        let shown = workspace.hidden_shown()
+        if shown != self.hidden_label:
+            self.hidden_label = shown
+            self.show_hidden.set_text("Hide Hidden Files" if shown else "Show Hidden Files") catch failure: discard(failure)
 
     func create_file(self) -> unit!:
         self.create("file")
@@ -73,10 +115,35 @@ pub class FileActions:
                 self.target = entry.path
         prompt.open("New File" if operation == "file" else "New Folder", accept = "Create")
 
-    func duplicate_file(self) -> unit!:
+    func cut_entry(self) -> unit!:
         let workspace = self.workspace else return
         let entry = workspace.selected_entry() else return
-        workspace.duplicate_file(entry.path)
+        self.clip_path = entry.path
+        self.clip_move = true
+        workspace.report("Cut " + entry.name)
+
+    func copy_entry(self) -> unit!:
+        let workspace = self.workspace else return
+        let entry = workspace.selected_entry() else return
+        self.clip_path = entry.path
+        self.clip_move = false
+        workspace.report("Copied " + entry.name)
+
+    func paste_entry(self) -> unit!:
+        let workspace = self.workspace else return
+        if self.clip_path == "":
+            return
+        var target = workspace.directory()
+        if let entry = workspace.selected_entry():
+            if entry.directory:
+                target = entry.path
+        workspace.paste_into(target, self.clip_path, self.clip_move)
+        if self.clip_move:
+            self.clip_path = ""
+
+    func toggle_hidden(self) -> unit!:
+        let workspace = self.workspace else return
+        workspace.toggle_hidden()
 
     func rename_file(self) -> unit!:
         let workspace = self.workspace else return

@@ -3,7 +3,8 @@
 - [x] Extend luce-ui popups with context placement, text input and reusable
   command search / text prompts; preserve focus and modal event handling.
 - [x] Add editor/output/explorer context menus and file creation, folder creation,
-  duplication, renaming and explicit deletion; keep filesystem policy in luced.
+  cut/copy/paste, renaming and explicit deletion; keep filesystem policy in luced.
+- [x] Make the explorer menu context sensitive, hover its rows, and toggle hidden files.
 - [x] Give the folding gutter its own theme color and highlight the active pane.
 - [x] Add user-wide `~/.luced/settings.toml` and `theme.toml`, validated loading,
   editable defaults, and reload commands without overwriting existing files.
@@ -30,20 +31,28 @@ Luced supplies the actions and their availability:
 
 | Area | Commands |
 | --- | --- |
-| Explorer | New File, New Folder, Duplicate File, Rename, Delete, Copy Path, Refresh Files |
+| Explorer (empty) | New File, New Folder, Paste, Show/Hide Hidden Files, Refresh Files |
+| Explorer (folder) | New File, New Folder, Paste, Copy Path, Rename, Delete |
+| Explorer (file) | Cut, Copy, Copy Path, Rename, Delete |
 | Editor | Undo, Redo, Cut, Copy, Paste, Select All, Save, folding |
 | Output | Copy Output Selection, Select All Output, Clear Output |
 | Other application chrome | Command Palette, Edit Settings, Edit Theme, Reload Configuration, Next Panel |
 
-A secondary click on an explorer row selects without opening it. A secondary
-click inside selected text preserves the selection. Read-only output never
-enables destructive editing commands. `TextPrompt` provides reusable name entry
-and explicit deletion confirmation; Escape or Cancel leaves files alone.
+The explorer menu is context sensitive: the file pane picks its entries from the
+selection the click just made, so files, folders and empty space each get their
+own commands. A secondary click on an explorer row selects without opening it; a
+click on empty space or the parent row selects nothing. A secondary click inside
+selected text preserves the selection. Read-only output never enables destructive
+editing commands. `TextPrompt` provides reusable name entry and explicit deletion
+confirmation; Escape or Cancel leaves files alone.
 
-File creation, duplication and rename refuse existing destinations. Duplicate
-copies the file's saved bytes into the first unused `name copy.ext` name; it does
-not copy unsaved buffer contents or duplicate directories. Renaming directories
-updates open descendant documents. Deletion refuses unsaved open documents,
+Cut and Copy remember a source path; Paste copies it, or moves it for a Cut, into
+the selected folder or the current directory, choosing the first unused
+`name copy.ext` rather than overwriting. Copy operates on files, Cut on either.
+Show Hidden Files toggles dot-prefixed entries; `.DS_Store` and `__pycache__`
+stay hidden. File creation and rename refuse existing destinations. Renaming or
+moving directories updates open descendant documents. Deletion refuses unsaved
+open documents,
 including descendants, and asks for confirmation before removing a directory's
 contents. Filesystem failures appear in the status bar.
 
@@ -87,7 +96,7 @@ be whole numbers. `--luce` and `--base` override compiler settings for that run.
 
 | Table | Keys |
 | --- | --- |
-| `colors` | `background`, `panel`, `foreground`, `muted`, `selection`, `accent`, `button`, `pressed`, `border`, `active_border`, `gutter`, `hover`, `hover_border`, `gutter_active`, `shadow` |
+| `colors` | `background`, `panel`, `foreground`, `muted`, `selection`, `accent`, `button`, `pressed`, `border`, `active_border`, `gutter`, `shadow` |
 | `syntax` | `keyword`, `string`, `comment`, `number`, `type`, `other` |
 
 Colors are quoted sRGB `#RRGGBB` values. For example:
@@ -113,9 +122,12 @@ The shadow is a sharp translated rectangle, with no blur. Offset accepts 0–32
 logical points, opacity accepts 0–1, and zero disables the shadow. Existing theme
 files need no edits: omitted keys use defaults. Add these keys to customize them.
 
-Hover uses `colors.hover` for controls and gutter rows, and `hover_border` for
-panes. Keyboard focus uses `active_border` and takes precedence. The caret's
-line-number row uses `gutter_active`, including while a menu is open.
+Hover, focus and active-line highlights are derived from the palette, never
+configured: each lifts a surface toward `foreground` in perceptual (Oklab)
+lightness while keeping its hue, so a grayscale palette stays grayscale and a
+tinted one stays in family. Keyboard focus uses `active_border` and takes
+precedence. The caret's line-number row is a lift of `gutter`, including while a
+menu is open.
 
 Pane title bars share their frame's normal, hover and focus color. Inactive tabs
 use `panel`; icons and titles share the configured foreground. Horizontal title

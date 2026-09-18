@@ -79,11 +79,15 @@ Save all before closing again, or choose **File → Discard & close** after that
 Build and Run save open documents first and compile the selected source as the
 entry point. There is no shell expansion or implicit project task configuration.
 
-The explorer menu creates files and folders, duplicates files, renames entries,
-copies paths, refreshes the list and deletes after confirmation. Creation and
-rename refuse existing destinations; duplicates choose an unused `copy` name.
-Renaming a folder updates the paths of its open documents. Deletion refuses
-unsaved open documents and removes a directory's contents only after confirmation.
+The explorer highlights the row under the pointer, and its right-click menu
+follows what was clicked. Empty space offers New File, New Folder, Paste, a
+Show/Hide Hidden Files toggle and Refresh; a folder adds Copy Path, Rename and
+Delete and takes new entries and pastes inside itself; a file offers Cut, Copy,
+Copy Path, Rename and Delete. Cut and Copy remember a path; Paste places it in
+the target folder, choosing an unused `copy` name rather than overwriting.
+Creation and rename refuse existing destinations. Renaming or moving a folder
+updates the paths of its open documents. Deletion refuses unsaved open documents
+and removes a directory's contents only after confirmation.
 The editor menu exposes editing, save and folding commands. The output menu
 copies selected output, selects all or clears it. Right-clicking a row selects it
 without opening it; right-clicking selected text preserves the selection.

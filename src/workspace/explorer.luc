@@ -10,9 +10,11 @@ pub struct Entry:
 pub class Explorer:
     pub var directory: str
     pub var entries: list[Entry]
+    pub var show_hidden: bool = false
 
     pub func init(self, directory: str) -> unit!:
         self.entries = []
+        self.show_hidden = false
         self.directory = files.absolute_path(directory)
         self.open(self.directory)
 
@@ -23,7 +25,9 @@ pub class Explorer:
         var regular: list[Entry] = []
         for index in 0..<snapshot.count():
             let name = snapshot.name(index) catch failure: continue
-            if name in [".git", ".DS_Store", "__pycache__"]:
+            if name in [".DS_Store", "__pycache__", ".", ".."]:
+                continue
+            if name.starts_with(".") and not self.show_hidden:
                 continue
             let full = paths.join(absolute, name)
             let kind = files.path_kind(full) catch failure: continue

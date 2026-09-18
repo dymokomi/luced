@@ -85,7 +85,7 @@ pub class Editor:
         self.connections.append(self.actions.focus_editor.on_trigger(self.workspace.focus_editor))
         self.connections.append(self.actions.focus_output.on_trigger(self.focus_output))
         self.connections.append(self.view.sidebar.listing.on_activate(self.workspace.activate))
-        self.connections.append(self.view.sidebar.context.on_open(self.actions.files.update))
+        self.connections.append(self.view.sidebar.context.on_open(self.view.sidebar.refresh_menu))
         self.connections.append(self.view.output.context.on_open(self.actions.output.update))
         self.connections.append(self.app.on_frame(self.frame))
 

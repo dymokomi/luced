@@ -20,17 +20,25 @@ pub func create_file(directory: str, name: str) -> str!:
 pub func create_folder(directory: str, name: str) -> unit!:
     files.make_directory(child(directory, name))
 
-pub func duplicate(source: str) -> str!:
+## Copy or move `source` into `directory`, choosing an unused name so a paste
+## never clobbers an existing entry; a collision falls back to a " copy" suffix.
+pub func paste(source: str, directory: str, move: bool) -> str!:
     let filename = paths.name(source)
     let dot = filename.split(".")
     let extension = "." + (dot.last else "") if dot.length > 1 and not filename.starts_with(".") else ""
     let stem = filename[..<filename.length - extension.length]
-    for number in 1..<10001:
-        let suffix = " copy" if number == 1 else f" copy {number}"
-        let target = paths.join(paths.parent(source), stem + suffix + extension)
-        files.copy_path(source, target) catch failure:
-            if failure.code == files.already_exists:
-                continue
-            error(failure.code, failure.message)
+    for number in 0..<10001:
+        let suffix = "" if number == 0 else (" copy" if number == 1 else f" copy {number}")
+        let target = paths.join(directory, stem + suffix + extension)
+        if move:
+            files.move_path(source, target) catch failure:
+                if failure.code == files.already_exists:
+                    continue
+                error(failure.code, failure.message)
+        else:
+            files.copy_path(source, target) catch failure:
+                if failure.code == files.already_exists:
+                    continue
+                error(failure.code, failure.message)
         return target
-    error(ui.invalid, "No unused duplicate filename was found")
+    error(ui.invalid, "No unused destination name was found")
