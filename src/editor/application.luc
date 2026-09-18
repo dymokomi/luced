@@ -1,6 +1,6 @@
 ## Session construction composes configuration, commands, named views and the
 ## workspace. Interaction policy stays in those components, not the entry point.
-from ui import Application, Font
+from ui import Application, Font, Shortcut
 from interop import Connection
 from editor.options import Options
 from editor.actions import EditorActions
@@ -64,6 +64,12 @@ pub class Editor:
         self.connections = []
         self.connect()
         app.set_commands(actions.all)
+        for (id, chord) in settings.shortcuts:
+            let shortcut = Shortcut.parse(chord) catch failure:
+                warning += f" shortcut {id}: {failure.message}"
+                continue
+            if let command = app.command(id):
+                command.set_shortcut(shortcut)
         app.set_close_handler(workspace.can_close)
         app.set_error_handler(workspace.report)
         if is_file:

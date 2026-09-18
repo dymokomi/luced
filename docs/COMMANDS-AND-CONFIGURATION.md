@@ -86,11 +86,28 @@ height = 800
 [compiler]
 luce = "luce"
 luce_base = "luce-base"
+
+[shortcuts]
+save = "cmd+s"
+build = "cmd+b"
+run = "f5"
+command_palette = "cmd+p"
+focus_editor = "cmd+2"
 ```
 
 An empty family uses the OS monospace face. Font sizes range from 8 to 40 points.
 Window width ranges from 480 to 4096 and height from 300 to 4096; dimensions must
 be whole numbers. `--luce` and `--base` override compiler settings for that run.
+
+`[shortcuts]` binds a command id to a key chord. A chord is `+`-separated and
+case-insensitive: `cmd`/`ctrl`/`super` is the primary modifier, plus `shift` and
+`alt`; the last token is the key (a letter, digit, `f1`..`f12`, a symbol like `[`,
+or a named key like `enter`). `"none"` unbinds. A command absent from the table
+keeps its built-in default; an unknown id is ignored. The command ids are those
+shown in the palette — `save`, `save_all`, `build`, `run`, `stop`, `fold`,
+`fold_all`, `unfold_all`, `command_palette`, `next_pane`, `previous_pane`,
+`focus_explorer`, `focus_editor`, `focus_output`. Editing keys (undo, cut, copy,
+paste, select all) are handled inside the text editor, not here.
 
 `theme.toml` accepts these optional colors; omitted values use defaults:
 
