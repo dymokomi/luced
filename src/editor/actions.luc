@@ -26,6 +26,10 @@ pub class EditorActions:
     pub let focus_explorer: Command
     pub let focus_editor: Command
     pub let focus_output: Command
+    pub let focus_left: Command
+    pub let focus_right: Command
+    pub let focus_up: Command
+    pub let focus_down: Command
     pub let editing: TextActions
     pub let output: TextActions
     pub let files: FileActions
@@ -70,13 +74,21 @@ pub class EditorActions:
         self.focus_editor = focus_editor
         let focus_output = Command("Focus Output", Shortcut(Key.digit_3, primary = true), id = "focus_output")
         self.focus_output = focus_output
+        let focus_left = Command("Focus Pane Left", Shortcut(Key.left, primary = true, alt = true), id = "focus_left")
+        self.focus_left = focus_left
+        let focus_right = Command("Focus Pane Right", Shortcut(Key.right, primary = true, alt = true), id = "focus_right")
+        self.focus_right = focus_right
+        let focus_up = Command("Focus Pane Up", Shortcut(Key.up, primary = true, alt = true), id = "focus_up")
+        self.focus_up = focus_up
+        let focus_down = Command("Focus Pane Down", Shortcut(Key.down, primary = true, alt = true), id = "focus_down")
+        self.focus_down = focus_down
         let editing = TextActions()
         let output = TextActions(output = true)
         let files = FileActions()
         self.editing = editing
         self.output = output
         self.files = files
-        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output] + files.all + editing.all + output.all
+        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
 
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:

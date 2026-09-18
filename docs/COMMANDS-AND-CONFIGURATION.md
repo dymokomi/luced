@@ -36,7 +36,7 @@ Luced supplies the actions and their availability:
 | Explorer (file) | Cut, Copy, Copy Path, Rename, Delete |
 | Editor | Undo, Redo, Cut, Copy, Paste, Select All, Save, folding |
 | Output | Copy Output Selection, Select All Output, Clear Output |
-| Other application chrome | Command Palette, Edit Settings, Edit Theme, Reload Configuration, Next Panel |
+| Other application chrome | Command Palette, Edit Settings, Edit Theme, Reload Configuration, pane navigation |
 
 The explorer menu is context sensitive: the file pane picks its entries from the
 selection the click just made, so files, folders and empty space each get their
@@ -65,7 +65,10 @@ buffers, since each needs its own destination.
 Cmd+P on macOS, or Ctrl+P, opens it. Type words to filter, use arrows to select,
 Enter to invoke and Escape to dismiss. Disabled commands remain visible but
 cannot run. F6 and Shift+F6 cycle the explorer, editor and output; Cmd/Ctrl+1, 2
-and 3 focus them directly. The focused pane has the `active_border` color.
+and 3 focus them directly. Cmd/Ctrl+Alt+arrows move to the nearest pane in that
+direction, choosing the pane whose center is furthest along the arrow and least
+off its axis, so a split editor and its neighbors stay one keystroke apart. The
+focused pane has the `active_border` color.
 
 ![Command search in the native editor](palette.png)
 
@@ -99,6 +102,8 @@ build = "cmd+b"
 run = "f5"
 command_palette = "cmd+p"
 focus_editor = "cmd+2"
+focus_left = "cmd+alt+left"
+focus_down = "cmd+alt+down"
 ```
 
 An empty family uses the OS monospace face. Font sizes range from 8 to 40 points.
@@ -112,8 +117,9 @@ or a named key like `enter`). `"none"` unbinds. A command absent from the table
 keeps its built-in default; an unknown id is ignored. The command ids are those
 shown in the palette — `new_tab`, `save`, `save_all`, `build`, `run`, `stop`, `fold`,
 `fold_all`, `unfold_all`, `command_palette`, `next_pane`, `previous_pane`,
-`focus_explorer`, `focus_editor`, `focus_output`. Editing keys (undo, cut, copy,
-paste, select all) are handled inside the text editor, not here.
+`focus_explorer`, `focus_editor`, `focus_output`, `focus_left`, `focus_right`,
+`focus_up`, `focus_down`. Editing keys (undo, cut, copy, paste, select all) are
+handled inside the text editor, not here.
 
 `theme.toml` accepts these optional colors; omitted values use defaults:
 

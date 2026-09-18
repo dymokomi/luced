@@ -90,6 +90,10 @@ pub class Editor:
         self.connections.append(self.actions.focus_explorer.on_trigger(self.focus_explorer))
         self.connections.append(self.actions.focus_editor.on_trigger(self.workspace.focus_editor))
         self.connections.append(self.actions.focus_output.on_trigger(self.focus_output))
+        self.connections.append(self.actions.focus_left.on_trigger(self.focus_left))
+        self.connections.append(self.actions.focus_right.on_trigger(self.focus_right))
+        self.connections.append(self.actions.focus_up.on_trigger(self.focus_up))
+        self.connections.append(self.actions.focus_down.on_trigger(self.focus_down))
         self.connections.append(self.view.sidebar.listing.on_activate(self.workspace.activate))
         self.connections.append(self.view.sidebar.context.on_open(self.view.sidebar.refresh_menu))
         self.connections.append(self.view.output.context.on_open(self.actions.output.update))
@@ -113,6 +117,18 @@ pub class Editor:
 
     pub func previous_pane(self) -> unit!:
         self.view.dock.focus_next(backwards = true)
+
+    pub func focus_left(self) -> unit!:
+        self.view.dock.focus_direction(-1.0, 0.0)
+
+    pub func focus_right(self) -> unit!:
+        self.view.dock.focus_direction(1.0, 0.0)
+
+    pub func focus_up(self) -> unit!:
+        self.view.dock.focus_direction(0.0, -1.0)
+
+    pub func focus_down(self) -> unit!:
+        self.view.dock.focus_direction(0.0, 1.0)
 
     func frame(self, elapsed: float) -> unit!:
         self.workspace.frame(elapsed)
