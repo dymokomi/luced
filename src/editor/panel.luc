@@ -1,6 +1,6 @@
 ## One editor tab owns its presentation and subscriptions. Its Document keeps
 ## text, history and language analysis when the tab moves to another group.
-from ui import Action, ContextMenu, Font, IconKind, Panel, Size, TextEditor, VStack
+from ui import Command, ContextMenu, Font, IconKind, Panel, Size, TextEditor, VStack
 from interop import Connection
 from workspace.document import Document
 import editor.file_items as file_items
@@ -13,7 +13,7 @@ pub class EditorPanel:
     let host: VStack
     pub let connections: list[Connection]
 
-    pub func init(self, actions: list[Action], font: Font) -> unit!:
+    pub func init(self, actions: list[Command], font: Font) -> unit!:
         let welcome = TextEditor("Open a file from the explorer.\n\nUse + to add a tab or split this pane.\nDrag a tab to move it between panes.\n", read_only = true, line_numbers = false, font = font)
         let host = VStack([welcome], spacing = 0.0)
         host.layout().set_flex()

@@ -1,28 +1,28 @@
 ## Text menus bind to one control. Source and output therefore share editing
 ## behavior without sending output commands to the currently open source file.
-from ui import Action, TextEditor
+from ui import Command, TextEditor
 from interop import Connection
 
 pub class TextActions:
-    pub let undo: Action
-    pub let redo: Action
-    pub let cut: Action
-    pub let copy: Action
-    pub let paste: Action
-    pub let select_all: Action
-    pub let clear: Action
-    pub let all: list[Action]
+    pub let undo: Command
+    pub let redo: Command
+    pub let cut: Command
+    pub let copy: Command
+    pub let paste: Command
+    pub let select_all: Command
+    pub let clear: Command
+    pub let all: list[Command]
     let connections: list[Connection]
     var editor: TextEditor? = none
 
     pub func init(self, output: bool = false) -> unit!:
-        let undo = Action("Undo")
-        let redo = Action("Redo")
-        let cut = Action("Cut")
-        let copy = Action("Copy Output Selection" if output else "Copy")
-        let paste = Action("Paste")
-        let select_all = Action("Select All Output" if output else "Select All")
-        let clear = Action("Clear Output")
+        let undo = Command("Undo", id = "undo")
+        let redo = Command("Redo", id = "redo")
+        let cut = Command("Cut", id = "cut")
+        let copy = Command("Copy Output Selection" if output else "Copy", id = "copy_output" if output else "copy")
+        let paste = Command("Paste", id = "paste")
+        let select_all = Command("Select All Output" if output else "Select All", id = "select_all_output" if output else "select_all")
+        let clear = Command("Clear Output", id = "clear_output")
         self.undo = undo
         self.redo = redo
         self.cut = cut

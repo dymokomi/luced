@@ -1,5 +1,5 @@
 ## One action instance supplies each command everywhere it is presented.
-from ui import Action, Shortcut
+from ui import Command, Shortcut
 from input import Key
 from interop import Connection
 from workspace.controller import Workspace
@@ -7,65 +7,65 @@ from editor.text_actions import TextActions
 from editor.file_actions import FileActions
 
 pub class EditorActions:
-    pub let save: Action
-    pub let save_all: Action
-    pub let build: Action
-    pub let run: Action
-    pub let stop: Action
-    pub let discard_changes: Action
-    pub let fold: Action
-    pub let fold_all: Action
-    pub let unfold_all: Action
-    pub let palette: Action
-    pub let settings: Action
-    pub let theme: Action
-    pub let reload: Action
-    pub let next_pane: Action
-    pub let previous_pane: Action
-    pub let focus_explorer: Action
-    pub let focus_editor: Action
-    pub let focus_output: Action
+    pub let save: Command
+    pub let save_all: Command
+    pub let build: Command
+    pub let run: Command
+    pub let stop: Command
+    pub let discard_changes: Command
+    pub let fold: Command
+    pub let fold_all: Command
+    pub let unfold_all: Command
+    pub let palette: Command
+    pub let settings: Command
+    pub let theme: Command
+    pub let reload: Command
+    pub let next_pane: Command
+    pub let previous_pane: Command
+    pub let focus_explorer: Command
+    pub let focus_editor: Command
+    pub let focus_output: Command
     pub let editing: TextActions
     pub let output: TextActions
     pub let files: FileActions
-    pub let all: list[Action]
+    pub let all: list[Command]
 
     pub func init(self) -> unit!:
-        let save = Action("Save", Shortcut(Key.s, primary = true))
-        let save_all = Action("Save all", Shortcut(Key.s, primary = true, shift = true))
-        let build = Action("Build", Shortcut(Key.b, primary = true))
-        let run = Action("Run", Shortcut(Key.f5))
-        let stop = Action("Stop", Shortcut(Key.f5, shift = true))
-        let discard_changes = Action("Discard & close")
+        let save = Command("Save", Shortcut(Key.s, primary = true), id = "save")
+        let save_all = Command("Save all", Shortcut(Key.s, primary = true, shift = true), id = "save_all")
+        let build = Command("Build", Shortcut(Key.b, primary = true), id = "build")
+        let run = Command("Run", Shortcut(Key.f5), id = "run")
+        let stop = Command("Stop", Shortcut(Key.f5, shift = true), id = "stop")
+        let discard_changes = Command("Discard & close", id = "discard")
         self.save = save
         self.save_all = save_all
         self.build = build
         self.run = run
         self.stop = stop
         self.discard_changes = discard_changes
-        let fold = Action("Toggle fold", Shortcut(Key.left_bracket, primary = true, alt = true))
-        let fold_all = Action("Fold all", Shortcut(Key.left_bracket, primary = true, shift = true, alt = true))
-        let unfold_all = Action("Unfold all", Shortcut(Key.right_bracket, primary = true, shift = true, alt = true))
+        let fold = Command("Toggle fold", Shortcut(Key.left_bracket, primary = true, alt = true), id = "fold")
+        let fold_all = Command("Fold all", Shortcut(Key.left_bracket, primary = true, shift = true, alt = true), id = "fold_all")
+        let unfold_all = Command("Unfold all", Shortcut(Key.right_bracket, primary = true, shift = true, alt = true), id = "unfold_all")
         self.fold = fold
         self.fold_all = fold_all
         self.unfold_all = unfold_all
-        let palette = Action("Command Palette", Shortcut(Key.p, primary = true))
+        let palette = Command("Command Palette", Shortcut(Key.p, primary = true), id = "command_palette")
         self.palette = palette
-        let settings = Action("Edit Settings")
+        let settings = Command("Edit Settings", id = "edit_settings")
         self.settings = settings
-        let theme = Action("Edit Theme")
+        let theme = Command("Edit Theme", id = "edit_theme")
         self.theme = theme
-        let reload = Action("Reload Configuration")
+        let reload = Command("Reload Configuration", id = "reload_config")
         self.reload = reload
-        let next_pane = Action("Next Panel", Shortcut(Key.f6))
+        let next_pane = Command("Next Panel", Shortcut(Key.f6), id = "next_pane")
         self.next_pane = next_pane
-        let previous_pane = Action("Previous Panel", Shortcut(Key.f6, shift = true))
+        let previous_pane = Command("Previous Panel", Shortcut(Key.f6, shift = true), id = "previous_pane")
         self.previous_pane = previous_pane
-        let focus_explorer = Action("Focus Explorer", Shortcut(Key.digit_1, primary = true))
+        let focus_explorer = Command("Focus Explorer", Shortcut(Key.digit_1, primary = true), id = "focus_explorer")
         self.focus_explorer = focus_explorer
-        let focus_editor = Action("Focus Editor", Shortcut(Key.digit_2, primary = true))
+        let focus_editor = Command("Focus Editor", Shortcut(Key.digit_2, primary = true), id = "focus_editor")
         self.focus_editor = focus_editor
-        let focus_output = Action("Focus Output", Shortcut(Key.digit_3, primary = true))
+        let focus_output = Command("Focus Output", Shortcut(Key.digit_3, primary = true), id = "focus_output")
         self.focus_output = focus_output
         let editing = TextActions()
         let output = TextActions(output = true)

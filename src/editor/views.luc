@@ -28,7 +28,7 @@ pub class Sidebar:
 
     ## Chosen just before the menu opens, once the click has updated the selection.
     pub func refresh_menu(self) -> unit!:
-        self.context.set_actions(self.files.menu_for_selection())
+        self.context.set_commands(self.files.menu_for_selection())
 
 pub class OutputPane:
     pub let output: TextEditor

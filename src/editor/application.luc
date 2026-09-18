@@ -63,7 +63,7 @@ pub class Editor:
         self.options = options
         self.connections = []
         self.connect()
-        app.set_actions(actions.all)
+        app.set_commands(actions.all)
         app.set_close_handler(workspace.can_close)
         app.set_error_handler(workspace.report)
         if is_file:

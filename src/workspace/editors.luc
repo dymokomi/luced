@@ -1,6 +1,6 @@
 ## Document-tab lifetime and selection. Docking itself stays in luce-ui; this
 ## component decides which document to open and whether a tab may close.
-from ui import Action, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu
+from ui import Command, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu
 from interop import Connection
 from editor.panel import EditorPanel
 from editor.text_actions import TextActions
@@ -14,7 +14,7 @@ pub class Editors:
     pub let dock: DStack
     let anchor: Panel
     let font: Font
-    let commands: list[Action]
+    let commands: list[Command]
     let editing: TextActions
     let tabs: list[EditorPanel]
     let connections: list[Connection]
@@ -22,7 +22,7 @@ pub class Editors:
     var last_focused: Panel? = none
     var syntax: SyntaxTheme? = none
 
-    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Action], editing: TextActions) -> unit!:
+    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Command], editing: TextActions) -> unit!:
         self.dock = dock
         self.anchor = anchor
         self.font = font
