@@ -61,6 +61,13 @@ Saving an untitled buffer prompts for a name and writes it into the current
 explorer directory, then the tab adopts the new file. Save all skips untitled
 buffers, since each needs its own destination.
 
+**Toggle Word Wrap** (Cmd/Ctrl+Alt+Z) soft-wraps long lines to the pane width
+instead of scrolling horizontally, and back. Wrapping breaks at word boundaries,
+falling back to a hard break for a word wider than the pane; a wrapped line keeps
+its indentation and shows its number only on the first visual row. The toggle
+applies to every open editor and to tabs opened afterward; `editor.word_wrap`
+sets the startup default.
+
 `CommandPalette` searches the same action instances as menus and shortcuts.
 Cmd+P on macOS, or Ctrl+P, opens it. Type words to filter, use arrows to select,
 Enter to invoke and Escape to dismiss. Disabled commands remain visible but
@@ -86,6 +93,7 @@ Default `settings.toml`:
 [editor]
 font_family = ""
 font_size = 14.0
+word_wrap = false
 
 [window]
 width = 1180
@@ -100,6 +108,7 @@ new_tab = "cmd+n"
 save = "cmd+s"
 build = "cmd+b"
 run = "f5"
+toggle_word_wrap = "cmd+alt+z"
 command_palette = "cmd+p"
 focus_editor = "cmd+2"
 focus_left = "cmd+alt+left"
@@ -107,8 +116,9 @@ focus_down = "cmd+alt+down"
 ```
 
 An empty family uses the OS monospace face. Font sizes range from 8 to 40 points.
-Window width ranges from 480 to 4096 and height from 300 to 4096; dimensions must
-be whole numbers. `--luce` and `--base` override compiler settings for that run.
+`word_wrap` starts new tabs with soft wrap on or off. Window width ranges from 480
+to 4096 and height from 300 to 4096; dimensions must be whole numbers. `--luce` and
+`--base` override compiler settings for that run.
 
 `[shortcuts]` binds a command id to a key chord. A chord is `+`-separated and
 case-insensitive: `cmd`/`ctrl`/`super` is the primary modifier, plus `shift` and
@@ -116,10 +126,10 @@ case-insensitive: `cmd`/`ctrl`/`super` is the primary modifier, plus `shift` and
 or a named key like `enter`). `"none"` unbinds. A command absent from the table
 keeps its built-in default; an unknown id is ignored. The command ids are those
 shown in the palette — `new_tab`, `save`, `save_all`, `build`, `run`, `stop`, `fold`,
-`fold_all`, `unfold_all`, `command_palette`, `next_pane`, `previous_pane`,
-`focus_explorer`, `focus_editor`, `focus_output`, `focus_left`, `focus_right`,
-`focus_up`, `focus_down`. Editing keys (undo, cut, copy, paste, select all) are
-handled inside the text editor, not here.
+`fold_all`, `unfold_all`, `toggle_word_wrap`, `command_palette`, `next_pane`,
+`previous_pane`, `focus_explorer`, `focus_editor`, `focus_output`, `focus_left`,
+`focus_right`, `focus_up`, `focus_down`. Editing keys (undo, cut, copy, paste,
+select all) are handled inside the text editor, not here.
 
 `theme.toml` accepts these optional colors; omitted values use defaults:
 
@@ -190,14 +200,14 @@ them. Each file is limited to 64 KiB.
 This is a small configuration reader, not a complete general TOML library. It
 implements the forms needed by these schemas from the
 [TOML 1.0 specification](https://toml.io/en/v1.0.0): bare table/key names,
-single-line basic or literal strings, decimal numbers, and comments outside
-strings. UTF-8 text can be written directly. Basic strings support `\\`, `\"`,
-`\n`, `\r` and `\t`; literal strings preserve backslashes, useful for Windows
-paths such as `'C:\dev\luce\build\luce.exe'`. Numbers support decimal fractions,
-exponents and underscores between digits.
+single-line basic or literal strings, decimal numbers, the booleans `true` and
+`false`, and comments outside strings. UTF-8 text can be written directly. Basic
+strings support `\\`, `\"`, `\n`, `\r` and `\t`; literal strings preserve
+backslashes, useful for Windows paths such as `'C:\dev\luce\build\luce.exe'`.
+Numbers support decimal fractions, exponents and underscores between digits.
 
 Quoted/dotted keys, multiline strings, Unicode escapes, arrays, inline tables,
-booleans, dates and non-decimal integers are outside the current schema and are
+dates and non-decimal integers are outside the current schema and are
 rejected. Duplicate keys/tables and unknown settings are errors rather than
 silently ignored typos. Missing keys use their documented defaults.
 

@@ -21,11 +21,13 @@ pub class Editors:
     var active: EditorPanel? = none
     var last_focused: Panel? = none
     var syntax: SyntaxTheme? = none
+    var wrap: bool = false
 
-    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Command], editing: TextActions) -> unit!:
+    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Command], editing: TextActions, wrap: bool = false) -> unit!:
         self.dock = dock
         self.anchor = anchor
         self.font = font
+        self.wrap = wrap
         self.commands = commands
         self.editing = editing
         self.tabs = []
@@ -88,11 +90,20 @@ pub class Editors:
                 if document.path == identity:
                     self.dock.select(tab.body)
                     return
-        self.place(Document(identity, self.font, self.syntax))
+        self.place(Document(identity, self.font, self.syntax, wrap = self.wrap))
 
     ## Open a fresh untitled buffer in a tab, ready to type into and Save As later.
     pub func new_untitled(self) -> unit!:
-        self.place(Document("", self.font, self.syntax, blank = true))
+        self.place(Document("", self.font, self.syntax, blank = true, wrap = self.wrap))
+
+    pub func wrapping(self) -> bool:
+        return self.wrap
+
+    ## Toggle soft wrap for every open document and for tabs opened afterward.
+    pub func set_wrap_all(self, enabled: bool) -> unit!:
+        self.wrap = enabled
+        for document in self.documents():
+            document.editor.set_wrap(enabled)
 
     ## Put a document in the reused empty tab if there is one, otherwise a new tab.
     func place(self, document: Document) -> unit!:

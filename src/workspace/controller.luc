@@ -226,6 +226,12 @@ pub class Workspace:
     pub func unfold_all(self) -> unit!:
         self.command("unfold_all")
 
+    ## Toggle soft wrap for every open editor and for tabs opened afterward.
+    pub func toggle_word_wrap(self) -> unit!:
+        let enabled = not self.editors.wrapping()
+        self.editors.set_wrap_all(enabled)
+        self.report("Word wrap " + ("on" if enabled else "off"))
+
     pub func can_close(self) -> bool!:
         if self.discard_confirmed:
             return true

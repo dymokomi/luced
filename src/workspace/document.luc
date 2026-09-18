@@ -16,12 +16,12 @@ pub class Document:
     var highlighting: Connection?
     var highlighter: Highlighter?
 
-    pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none, blank: bool = false) -> unit!:
+    pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none, blank: bool = false, wrap: bool = false) -> unit!:
         let text = "" if blank else files.read_text(path)
         self.path = "" if blank else files.absolute_path(path)
         self.original = text
         self.crlf = text.contains("\r\n")
-        let editor = TextEditor(text, font = font)
+        let editor = TextEditor(text, font = font, wrap = wrap)
         self.editor = editor
         self.baseline = editor.text()
         var highlighting: Connection? = none

@@ -4,6 +4,7 @@ import ui
 pub class Settings:
     pub let font_family: str
     pub let font_size: float
+    pub let word_wrap: bool
     pub let width: int
     pub let height: int
     pub let luce: str
@@ -12,13 +13,14 @@ pub class Settings:
 
     pub func init(self, source: str = "") -> unit!:
         let table = Table(source)
-        table.check_within(["editor.font_family", "editor.font_size", "window.width", "window.height", "compiler.luce", "compiler.luce_base"], ["shortcuts"])
+        table.check_within(["editor.font_family", "editor.font_size", "editor.word_wrap", "window.width", "window.height", "compiler.luce", "compiler.luce_base"], ["shortcuts"])
         var shortcuts: map[str, str] = {}
         for id in table.keys("shortcuts"):
             shortcuts[id] = table.string("shortcuts." + id, "")
         self.shortcuts = shortcuts
         self.font_family = table.string("editor.font_family", "")
         self.font_size = table.number("editor.font_size", 14.0, 8.0, 40.0)
+        self.word_wrap = table.boolean("editor.word_wrap", false)
         let width = table.number("window.width", 1180.0, 480.0, 4096.0)
         let height = table.number("window.height", 800.0, 300.0, 4096.0)
         if float(int(width)) != width or float(int(height)) != height:
@@ -29,7 +31,7 @@ pub class Settings:
         self.base = table.string("compiler.luce_base", "luce-base")
 
 pub func defaults() -> str:
-    return "# luced user settings. Save to apply font/compiler/shortcut changes.\n# Window dimensions apply on the next launch. Empty font_family uses the OS monospace face.\n\n[editor]\nfont_family = \"\"\nfont_size = 14.0\n\n[window]\nwidth = 1180\nheight = 800\n\n[compiler]\nluce = \"luce\"\nluce_base = \"luce-base\"\n\n" + shortcut_defaults()
+    return "# luced user settings. Save to apply font/compiler/shortcut changes.\n# Window dimensions apply on the next launch. Empty font_family uses the OS monospace face.\n\n[editor]\nfont_family = \"\"\nfont_size = 14.0\nword_wrap = false\n\n[window]\nwidth = 1180\nheight = 800\n\n[compiler]\nluce = \"luce\"\nluce_base = \"luce-base\"\n\n" + shortcut_defaults()
 
 ## Command shortcuts, keyed by command id. A chord is `+`-separated and case
 ## insensitive: `cmd`/`ctrl`/`super` is the primary modifier, plus `shift`/`alt`;
@@ -37,4 +39,4 @@ pub func defaults() -> str:
 ## key like `enter`). Use \"none\" to unbind. Editing keys (undo, cut, copy, paste)
 ## are handled inside the text editor.
 pub func shortcut_defaults() -> str:
-    return "# Command shortcuts by id; a chord like \"cmd+shift+s\", \"f5\" or \"none\".\n[shortcuts]\nnew_tab = \"cmd+n\"\nsave = \"cmd+s\"\nsave_all = \"cmd+shift+s\"\nbuild = \"cmd+b\"\nrun = \"f5\"\nstop = \"shift+f5\"\nfold = \"cmd+alt+[\"\nfold_all = \"cmd+shift+alt+[\"\nunfold_all = \"cmd+shift+alt+]\"\ncommand_palette = \"cmd+p\"\nnext_pane = \"f6\"\nprevious_pane = \"shift+f6\"\nfocus_explorer = \"cmd+1\"\nfocus_editor = \"cmd+2\"\nfocus_output = \"cmd+3\"\nfocus_left = \"cmd+alt+left\"\nfocus_right = \"cmd+alt+right\"\nfocus_up = \"cmd+alt+up\"\nfocus_down = \"cmd+alt+down\"\n"
+    return "# Command shortcuts by id; a chord like \"cmd+shift+s\", \"f5\" or \"none\".\n[shortcuts]\nnew_tab = \"cmd+n\"\nsave = \"cmd+s\"\nsave_all = \"cmd+shift+s\"\nbuild = \"cmd+b\"\nrun = \"f5\"\nstop = \"shift+f5\"\nfold = \"cmd+alt+[\"\nfold_all = \"cmd+shift+alt+[\"\nunfold_all = \"cmd+shift+alt+]\"\ntoggle_word_wrap = \"cmd+alt+z\"\ncommand_palette = \"cmd+p\"\nnext_pane = \"f6\"\nprevious_pane = \"shift+f6\"\nfocus_explorer = \"cmd+1\"\nfocus_editor = \"cmd+2\"\nfocus_output = \"cmd+3\"\nfocus_left = \"cmd+alt+left\"\nfocus_right = \"cmd+alt+right\"\nfocus_up = \"cmd+alt+up\"\nfocus_down = \"cmd+alt+down\"\n"

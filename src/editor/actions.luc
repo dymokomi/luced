@@ -17,6 +17,7 @@ pub class EditorActions:
     pub let fold: Command
     pub let fold_all: Command
     pub let unfold_all: Command
+    pub let word_wrap: Command
     pub let palette: Command
     pub let settings: Command
     pub let theme: Command
@@ -56,6 +57,8 @@ pub class EditorActions:
         self.fold = fold
         self.fold_all = fold_all
         self.unfold_all = unfold_all
+        let word_wrap = Command("Toggle Word Wrap", Shortcut(Key.z, primary = true, alt = true), id = "toggle_word_wrap")
+        self.word_wrap = word_wrap
         let palette = Command("Command Palette", Shortcut(Key.p, primary = true), id = "command_palette")
         self.palette = palette
         let settings = Command("Edit Settings", id = "edit_settings")
@@ -88,7 +91,7 @@ pub class EditorActions:
         self.editing = editing
         self.output = output
         self.files = files
-        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
+        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, word_wrap, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
 
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:
@@ -96,7 +99,7 @@ pub class EditorActions:
             self.build.on_trigger(workspace.build), self.run.on_trigger(workspace.run),
             self.stop.on_trigger(workspace.stop), self.discard_changes.on_trigger(workspace.discard_and_close),
             self.fold.on_trigger(workspace.toggle_fold), self.fold_all.on_trigger(workspace.fold_all),
-            self.unfold_all.on_trigger(workspace.unfold_all)]
+            self.unfold_all.on_trigger(workspace.unfold_all), self.word_wrap.on_trigger(workspace.toggle_word_wrap)]
 
     pub func update(self, workspace: Workspace, busy: bool):
         self.editing.bind(workspace.current_editor())

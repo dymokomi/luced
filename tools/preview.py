@@ -19,6 +19,7 @@ p.add_argument('--context', choices=['editor', 'files', 'output'], help='capture
 p.add_argument('--prompt', action='store_true', help='capture the new-file prompt')
 p.add_argument('--hover', choices=['edit-menu', 'divider', 'gutter', 'output'], help='capture hover feedback or top-level menu switching')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
+p.add_argument('--wrap', action='store_true', help='capture with soft word wrap toggled on')
 p.add_argument('--tabs', action='store_true', help='open additional source files as tabs')
 p.add_argument('--dock', choices=['menu', 'preview', 'merge', 'left', 'right', 'top', 'bottom'], help='capture dynamic workspace interaction')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
@@ -86,8 +87,8 @@ pub func main(arguments: list[str]) -> int!:
             probe.begin("luced")
             captured = true)
 """
-    if a.menu or a.palette or a.context or a.hover or a.dock:
-        source = 'from ui import Event\nfrom input import EventKind' + (', Key' if a.menu or a.palette else '') + '\n' + source
+    if a.menu or a.palette or a.context or a.hover or a.dock or a.wrap:
+        source = 'from ui import Event\nfrom input import EventKind' + (', Key' if a.menu or a.palette or a.wrap else '') + '\n' + source
     if a.menu:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.app.dispatch(Event(cancelled = true))
@@ -140,6 +141,10 @@ pub func main(arguments: list[str]) -> int!:
     if a.fold:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.workspace.fold_all()
+        if captured:""")
+    if a.wrap:
+        source = source.replace('        if captured:', """        if frames == 10:
+            editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.z, control = true, alt = true))
         if captured:""")
     if a.dock:
         source = 'from ui import invalid\n' + source

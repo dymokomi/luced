@@ -49,7 +49,7 @@ pub class Editor:
         let runner = Runner(view.output.output, options.luce if options.luce_override else settings.luce,
             options.base if options.base_override else settings.base)
         let editors = Editors(view.dock, view.output.body, font,
-            actions.editing.all + [actions.save, actions.fold, actions.fold_all, actions.unfold_all], actions.editing)
+            actions.editing.all + [actions.save, actions.fold, actions.fold_all, actions.unfold_all], actions.editing, wrap = settings.word_wrap)
         view.dock.set_fraction(view.sidebar.body, 0.22)
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors)
         workspace.set_syntax(appearance.syntax)
