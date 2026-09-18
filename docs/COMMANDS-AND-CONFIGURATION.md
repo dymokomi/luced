@@ -136,10 +136,13 @@ spacing is configurable in character cells:
 ```toml
 [layout]
 header_inset_cells = 1.5
+caret_width = 2.0
 ```
 
-This accepts 0–4 cells and follows the shared font's advance. Both title and body
-retain the same font size; changing the font updates header and icon geometry.
+`header_inset_cells` accepts 0–4 cells and follows the shared font's advance. Both
+title and body retain the same font size; changing the font updates header and
+icon geometry. `caret_width` sets the blinking text caret's thickness in points
+(1–8, default 2).
 
 The application checks for changed contents every half second and validates both
 files before applying them. Font changes update the shared `Font` object used by
