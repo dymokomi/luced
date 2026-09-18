@@ -2,7 +2,7 @@
 from ui import Theme
 from gpu import Color
 from language.appearance import SyntaxTheme
-from configuration.toml import Table
+from toml import Table
 import math
 import ui
 

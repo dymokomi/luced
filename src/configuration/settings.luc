@@ -1,4 +1,4 @@
-from configuration.toml import Table
+from toml import Table
 import ui
 
 pub class Settings:

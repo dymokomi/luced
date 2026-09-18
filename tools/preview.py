@@ -27,7 +27,7 @@ a.output.resolve().parent.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='luced-preview-') as temporary:
     work = Path(temporary)
     shutil.copytree(ROOT / 'src', work / 'src')
-    (work / 'luce.toml').write_text('[package]\nname = "luced_preview"\nsource = "src"\n[dependencies]\nluce_ui = ' + json.dumps(str(ROOT.parent / 'luce-ui')) + '\n')
+    (work / 'luce.toml').write_text('[package]\nname = "luced_preview"\nsource = "src"\n[dependencies]\nluce_ui = ' + json.dumps(str(ROOT.parent / 'luce-ui')) + '\nluce_config = ' + json.dumps(str(ROOT.parent / 'luce-config')) + '\n')
     native = (ROOT.parent / 'luce-base/tests/programs/gpu/native.lucb').read_text()
     native += '''
 import files
