@@ -16,9 +16,9 @@ pub class Document:
     var highlighting: Connection?
     var highlighter: Highlighter?
 
-    pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none) -> unit!:
-        let text = files.read_text(path)
-        self.path = files.absolute_path(path)
+    pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none, blank: bool = false) -> unit!:
+        let text = "" if blank else files.read_text(path)
+        self.path = "" if blank else files.absolute_path(path)
         self.original = text
         self.crlf = text.contains("\r\n")
         let editor = TextEditor(text, font = font)
@@ -26,7 +26,7 @@ pub class Document:
         self.baseline = editor.text()
         var highlighting: Connection? = none
         var service: Highlighter? = none
-        if path.ends_with(".luc") or path.ends_with(".lucb"):
+        if self.path.ends_with(".luc") or self.path.ends_with(".lucb"):
             let highlighter = Highlighter(editor, syntax)
             highlighter.update()
             highlighting = editor.on_change(highlighter.update)
@@ -52,6 +52,19 @@ pub class Document:
             self.highlighter = none
             self.editor.set_highlights([])
             discard(self.editor.set_folds([], self.editor.version()))
+
+    ## An untitled buffer has no path on disk yet; saving it needs a destination.
+    pub func is_untitled(self) -> bool:
+        return self.path == ""
+
+    ## Write an untitled buffer to a new file, then adopt it: refuse an existing
+    ## path, keep the edits, and enable language features for a source extension.
+    pub func save_as(self, path: str, syntax: SyntaxTheme?) -> unit!:
+        let text = self.encoded_text()
+        files.create_text(path, text)
+        self.original = text
+        self.baseline = self.editor.text()
+        self.rename(path, syntax)
 
     pub func dirty(self) -> bool!:
         return self.editor.text() != self.baseline

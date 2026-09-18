@@ -31,8 +31,9 @@ pub class EditorPanel:
 
     pub func update(self) -> unit!:
         if let document = self.document:
-            self.body.set_text(paths.name(document.path) + (" *" if document.dirty() else ""))
-            self.body.set_detail(paths.parent(document.path))
+            let name = "Untitled" if document.is_untitled() else paths.name(document.path)
+            self.body.set_text(name + (" *" if document.dirty() else ""))
+            self.body.set_detail("" if document.is_untitled() else paths.parent(document.path))
             self.body.set_icon(file_items.icon(document.path))
 
     pub func close(self):

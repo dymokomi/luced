@@ -56,6 +56,11 @@ open documents,
 including descendants, and asks for confirmation before removing a directory's
 contents. Filesystem failures appear in the status bar.
 
+**New Tab** (Cmd+N) opens an empty untitled buffer in a tab, ready to type into.
+Saving an untitled buffer prompts for a name and writes it into the current
+explorer directory, then the tab adopts the new file. Save all skips untitled
+buffers, since each needs its own destination.
+
 `CommandPalette` searches the same action instances as menus and shortcuts.
 Cmd+P on macOS, or Ctrl+P, opens it. Type words to filter, use arrows to select,
 Enter to invoke and Escape to dismiss. Disabled commands remain visible but
@@ -88,6 +93,7 @@ luce = "luce"
 luce_base = "luce-base"
 
 [shortcuts]
+new_tab = "cmd+n"
 save = "cmd+s"
 build = "cmd+b"
 run = "f5"
@@ -104,7 +110,7 @@ case-insensitive: `cmd`/`ctrl`/`super` is the primary modifier, plus `shift` and
 `alt`; the last token is the key (a letter, digit, `f1`..`f12`, a symbol like `[`,
 or a named key like `enter`). `"none"` unbinds. A command absent from the table
 keeps its built-in default; an unknown id is ignored. The command ids are those
-shown in the palette — `save`, `save_all`, `build`, `run`, `stop`, `fold`,
+shown in the palette — `new_tab`, `save`, `save_all`, `build`, `run`, `stop`, `fold`,
 `fold_all`, `unfold_all`, `command_palette`, `next_pane`, `previous_pane`,
 `focus_explorer`, `focus_editor`, `focus_output`. Editing keys (undo, cut, copy,
 paste, select all) are handled inside the text editor, not here.

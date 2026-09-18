@@ -88,7 +88,14 @@ pub class Editors:
                 if document.path == identity:
                     self.dock.select(tab.body)
                     return
-        let document = Document(identity, self.font, self.syntax)
+        self.place(Document(identity, self.font, self.syntax))
+
+    ## Open a fresh untitled buffer in a tab, ready to type into and Save As later.
+    pub func new_untitled(self) -> unit!:
+        self.place(Document("", self.font, self.syntax, blank = true))
+
+    ## Put a document in the reused empty tab if there is one, otherwise a new tab.
+    func place(self, document: Document) -> unit!:
         self.sync_focus()
         var destination: EditorPanel? = none
         if let active = self.active:
@@ -153,6 +160,10 @@ pub class Editors:
                 if current is document:
                     self.dock.remove(tab.body)
                     return
+
+    pub func save_untitled(self, path: str) -> unit!:
+        let document = self.current_document() else return
+        document.save_as(path, self.syntax)
 
     pub func changed(self) -> unit!:
         for tab in self.tabs: tab.update()

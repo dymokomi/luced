@@ -145,6 +145,18 @@ pub class FileActions:
         let workspace = self.workspace else return
         workspace.toggle_hidden()
 
+    ## Save the active document, prompting for a name when it is still untitled.
+    pub func save_document(self) -> unit!:
+        let workspace = self.workspace else return
+        let document = workspace.current_document() else return
+        if document.is_untitled():
+            let prompt = self.prompt else return
+            self.operation = "save_as"
+            self.target = workspace.directory()
+            prompt.open("Save As", accept = "Save")
+        else:
+            workspace.save()
+
     func rename_file(self) -> unit!:
         let workspace = self.workspace else return
         let prompt = self.prompt else return
@@ -179,3 +191,5 @@ pub class FileActions:
             workspace.rename_entry(target, text)
         elif operation == "delete":
             workspace.delete_entry(target)
+        elif operation == "save_as":
+            workspace.save_untitled(target, text)

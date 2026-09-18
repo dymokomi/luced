@@ -7,6 +7,7 @@ from editor.text_actions import TextActions
 from editor.file_actions import FileActions
 
 pub class EditorActions:
+    pub let new_tab: Command
     pub let save: Command
     pub let save_all: Command
     pub let build: Command
@@ -31,6 +32,8 @@ pub class EditorActions:
     pub let all: list[Command]
 
     pub func init(self) -> unit!:
+        let new_tab = Command("New Tab", Shortcut(Key.n, primary = true), id = "new_tab")
+        self.new_tab = new_tab
         let save = Command("Save", Shortcut(Key.s, primary = true), id = "save")
         let save_all = Command("Save all", Shortcut(Key.s, primary = true, shift = true), id = "save_all")
         let build = Command("Build", Shortcut(Key.b, primary = true), id = "build")
@@ -73,11 +76,11 @@ pub class EditorActions:
         self.editing = editing
         self.output = output
         self.files = files
-        self.all = [save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output] + files.all + editing.all + output.all
+        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output] + files.all + editing.all + output.all
 
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:
-        return [self.save.on_trigger(workspace.save), self.save_all.on_trigger(workspace.save_all),
+        return [self.new_tab.on_trigger(workspace.new_tab), self.save.on_trigger(self.files.save_document), self.save_all.on_trigger(workspace.save_all),
             self.build.on_trigger(workspace.build), self.run.on_trigger(workspace.run),
             self.stop.on_trigger(workspace.stop), self.discard_changes.on_trigger(workspace.discard_and_close),
             self.fold.on_trigger(workspace.toggle_fold), self.fold_all.on_trigger(workspace.fold_all),

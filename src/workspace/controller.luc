@@ -3,6 +3,7 @@
 from ui import Application, Text, TextEditor, ListView, Panel, ContextMenu
 from workspace.explorer import Explorer
 from workspace.editors import Editors
+from workspace.document import Document
 from commands.runner import Runner
 from language.appearance import SyntaxTheme
 from workspace.explorer import Entry
@@ -40,6 +41,9 @@ pub class Workspace:
 
     pub func current_editor(self) -> TextEditor?:
         return self.editors.current_editor()
+
+    pub func current_document(self) -> Document?:
+        return self.editors.current_document()
 
     pub func current_panel(self) -> Panel?:
         return self.editors.current_panel()
@@ -136,6 +140,17 @@ pub class Workspace:
         self.editors.open(path)
         self.close_pending = false
 
+    pub func new_tab(self) -> unit!:
+        self.editors.new_untitled()
+
+    ## Write the active untitled buffer to `directory`/`name`, then adopt the file.
+    pub func save_untitled(self, directory: str, name: str) -> unit!:
+        let path = operations.child(directory, name)
+        self.editors.save_untitled(path)
+        self.refresh_files()
+        self.changed()
+        self.report("Saved " + paths.name(path))
+
     pub func changed(self) -> unit!:
         self.editors.changed()
 
@@ -161,7 +176,7 @@ pub class Workspace:
             return
         if name == "save_all":
             for document in self.editors.documents():
-                document.save()
+                if not document.is_untitled(): document.save()
             self.changed()
             self.report("All open files saved")
             return
