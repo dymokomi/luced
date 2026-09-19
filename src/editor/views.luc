@@ -36,7 +36,7 @@ pub class OutputPane:
     pub let context: ContextMenu
 
     pub func init(self, actions: EditorActions, font: Font) -> unit!:
-        let output = TextEditor("Compiler and program output will appear here.\n", read_only = true, line_numbers = false, font = font)
+        let output = TextEditor("Compiler and program output will appear here.\n", read_only = true, line_numbers = false, font = font, wrap = true)
         actions.output.bind(output)
         let context = ContextMenu(output, actions.output.all, font = font)
         self.context = context
@@ -61,7 +61,7 @@ pub class EditorView:
             Menu("File", [actions.new_tab, actions.files.new_file, actions.files.new_folder, actions.save, actions.save_all, actions.settings, actions.theme, actions.ai_settings, actions.discard_changes], font = font),
             Menu("Edit", actions.editing.all, font = font),
             Menu("Build", [actions.build, actions.run, actions.stop], font = font),
-            Menu("View", [actions.ask_ai, actions.palette, actions.word_wrap, actions.fold, actions.fold_all, actions.unfold_all, actions.next_pane, actions.previous_pane, actions.reload], font = font),
+            Menu("View", [actions.ask_ai, actions.write_ai, actions.spellcheck_ai, actions.palette, actions.word_wrap, actions.fold, actions.fold_all, actions.unfold_all, actions.next_pane, actions.previous_pane, actions.reload], font = font),
             Spacer(),
             Button(action = actions.save, font = font),
             Button(action = actions.build, font = font),

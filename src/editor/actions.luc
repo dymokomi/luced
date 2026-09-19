@@ -19,6 +19,8 @@ pub class EditorActions:
     pub let unfold_all: Command
     pub let word_wrap: Command
     pub let ask_ai: Command
+    pub let write_ai: Command
+    pub let spellcheck_ai: Command
     pub let palette: Command
     pub let settings: Command
     pub let theme: Command
@@ -63,6 +65,10 @@ pub class EditorActions:
         self.word_wrap = word_wrap
         let ask_ai = Command("Ask AI", Shortcut(Key.i, primary = true), id = "ask_ai")
         self.ask_ai = ask_ai
+        let write_ai = Command("AI Write", Shortcut(Key.i, primary = true, shift = true), id = "write_ai")
+        self.write_ai = write_ai
+        let spellcheck_ai = Command("AI Spellcheck Selection", id = "spellcheck_ai")
+        self.spellcheck_ai = spellcheck_ai
         let palette = Command("Command Palette", Shortcut(Key.p, primary = true), id = "command_palette")
         self.palette = palette
         let settings = Command("Edit Settings", id = "edit_settings")
@@ -97,7 +103,7 @@ pub class EditorActions:
         self.editing = editing
         self.output = output
         self.files = files
-        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, word_wrap, ask_ai, palette, settings, theme, ai_settings, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
+        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, word_wrap, ask_ai, write_ai, spellcheck_ai, palette, settings, theme, ai_settings, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
 
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:

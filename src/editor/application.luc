@@ -28,6 +28,8 @@ pub class Editor:
     let connections: list[Connection]
     var ai_expecting: bool = false
     var ai_waiting: bool = false
+    var ai_mode: str = "ask"
+    var ai_selection: str = ""
     var ai_query: str = ""
 
     pub func init(self, options: Options) -> unit!:
@@ -90,6 +92,8 @@ pub class Editor:
         self.connections.append(self.actions.theme.on_trigger(self.configuration.edit_theme))
         self.connections.append(self.actions.ai_settings.on_trigger(self.configuration.edit_ai))
         self.connections.append(self.actions.ask_ai.on_trigger(self.ask_ai))
+        self.connections.append(self.actions.write_ai.on_trigger(self.write_ai))
+        self.connections.append(self.actions.spellcheck_ai.on_trigger(self.spellcheck_ai))
         self.connections.append(self.view.prompt.on_submit(self.ai_submit))
         self.connections.append(self.actions.reload.on_trigger(self.configuration.reload))
         self.connections.append(self.actions.next_pane.on_trigger(self.next_pane))
@@ -137,36 +141,68 @@ pub class Editor:
     pub func focus_down(self) -> unit!:
         self.view.dock.focus_direction(0.0, 1.0)
 
-    ## Cmd+I: ask the configured "ask" model. The request blocks briefly, so it is
-    ## deferred one frame past showing "Asking …" and the reply lands in the output.
+    ## Cmd+I: ask the "ask" model a question, with any selected text as context.
     pub func ask_ai(self) -> unit!:
-        if self.configuration.ai().mode("ask").model == "":
-            self.workspace.report("Set a model for the ask mode in Edit AI Settings")
+        try self.begin_mode("ask", true, "Ask AI", "Ask")
+
+    ## Cmd+Shift+I: describe a change; the "write" model answers about the selection.
+    pub func write_ai(self) -> unit!:
+        try self.begin_mode("write", true, "Write — describe the change", "Write")
+
+    ## Run the "spellcheck" model over the selected text (no prompt).
+    pub func spellcheck_ai(self) -> unit!:
+        try self.begin_mode("spellcheck", false, "", "")
+
+    ## Start an AI mode. A prompt mode captures the selection now and combines it
+    ## with the typed instruction on submit; a promptless mode runs on the selection.
+    func begin_mode(self, mode: str, needs_prompt: bool, title: str, accept: str) -> unit!:
+        let config = self.configuration.ai()
+        if not config.ready(mode):
+            self.workspace.report("The " + mode + " mode is not ready — set a model and key in Edit AI Settings")
             return
-        self.actions.files.reset_operation()
-        self.ai_expecting = true
-        self.view.prompt.open("Ask AI", accept = "Ask")
+        if config.mode(mode).provider != "openrouter":
+            self.workspace.report("Only the openrouter provider is wired up so far")
+            return
+        self.ai_mode = mode
+        self.ai_selection = self.selection_text()
+        if needs_prompt:
+            self.actions.files.reset_operation()
+            self.ai_expecting = true
+            self.view.prompt.open(title, accept = accept)
+        else:
+            if self.ai_selection == "":
+                self.workspace.report("Select some text first for " + mode)
+                return
+            self.launch(self.ai_selection)
 
     func ai_submit(self, text: str) -> unit!:
         if not self.ai_expecting:
             return
         self.ai_expecting = false
-        if text == "":
+        let content = self.combine(text, self.ai_selection)
+        if content == "":
             return
-        let config = self.configuration.ai()
-        let mode = config.mode("ask")
-        if not config.ready("ask"):
-            self.show_ai("The ask mode is not ready: set a model and a credential in Edit AI Settings.")
-            return
-        if mode.provider != "openrouter":
-            self.show_ai("Only the openrouter provider is wired up so far; ask uses " + mode.provider + ".")
-            return
-        if not ai.begin(config.openrouter.api_key, mode.model, mode.system, text):
+        self.launch(content)
+
+    func combine(self, instruction: str, selection: str) -> str:
+        if selection == "":
+            return instruction
+        if instruction == "":
+            return selection
+        return instruction + "\n\n----- selected text -----\n" + selection
+
+    func launch(self, content: str) -> unit!:
+        let mode = self.configuration.ai().mode(self.ai_mode)
+        if not ai.begin(self.configuration.ai().openrouter.api_key, mode.model, mode.system, content):
             self.show_ai("An AI request is already running.")
             return
-        self.ai_query = text
+        self.ai_query = content
         self.ai_waiting = true
-        self.show_ai("Asking " + mode.model + " …")
+        self.show_ai("Asking " + mode.model + " (" + self.ai_mode + ") …")
+
+    func selection_text(self) -> str!:
+        let editor = self.workspace.current_editor() else return ""
+        return editor.selected_text()
 
     func show_ai(self, text: str) -> unit!:
         self.view.output.output.set_text(text)
@@ -180,7 +216,7 @@ pub class Editor:
         if self.ai_waiting and ai.done():
             self.ai_waiting = false
             let reply = ai.take()
-            self.show_ai(self.ai_query + "\n\n" + reply + "\n")
+            self.show_ai(reply)
 
     pub func run(self) -> unit!:
         self.app.run(frame_limit = 12 if self.options.smoke else 0)
