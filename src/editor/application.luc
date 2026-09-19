@@ -1,6 +1,6 @@
 ## Session construction composes configuration, commands, named views and the
 ## workspace. Interaction policy stays in those components, not the entry point.
-from ui import Application, Font, Shortcut
+from ui import Application, Font, Shortcut, Command
 from interop import Connection
 from editor.options import Options
 from editor.actions import EditorActions
@@ -64,8 +64,9 @@ pub class Editor:
         let app = Application(view.body, title = "luced", width = settings.width, height = settings.height, theme = appearance.theme)
         let runner = Runner(view.output.output, options.luce if options.luce_override else settings.luce,
             options.base if options.base_override else settings.base)
+        let divider = Command("", divider = true)
         let editors = Editors(view.dock, view.output.body, font,
-            actions.editing.all + [actions.save, actions.fold, actions.fold_all, actions.unfold_all, actions.ask_ai, actions.write_ai, actions.spellcheck_ai], actions.editing, wrap = settings.word_wrap)
+            actions.editing.all + [divider, actions.save, divider, actions.fold, actions.fold_all, actions.unfold_all, divider, actions.ask_ai, actions.write_ai, actions.spellcheck_ai], actions.editing, wrap = settings.word_wrap)
         view.dock.set_fraction(view.sidebar.body, 0.22)
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors, view.dialog)
         workspace.set_syntax(appearance.syntax)

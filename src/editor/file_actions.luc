@@ -19,6 +19,7 @@ pub class FileActions:
     pub let delete: Command
     pub let refresh: Command
     pub let show_hidden: Command
+    let separator: Command
     pub let all: list[Command]
     var workspace: Workspace? = none
     var prompt: TextPrompt? = none
@@ -49,6 +50,7 @@ pub class FileActions:
         self.delete = delete
         self.refresh = refresh
         self.show_hidden = show_hidden
+        self.separator = Command("", divider = true)
         self.all = [new_file, new_folder, cut, copy, paste, copy_path, rename, delete, refresh, show_hidden]
 
     pub func connect(self, workspace: Workspace, prompt: TextPrompt) -> list[Connection]!:
@@ -63,13 +65,13 @@ pub class FileActions:
 
     ## Menus offered by the file pane, one per kind of right-click target.
     pub func file_menu(self) -> list[Command]:
-        return [self.cut, self.copy, self.copy_path, self.rename, self.delete]
+        return [self.cut, self.copy, self.copy_path, self.separator, self.rename, self.delete]
 
     pub func folder_menu(self) -> list[Command]:
-        return [self.new_file, self.new_folder, self.paste, self.copy_path, self.rename, self.delete]
+        return [self.new_file, self.new_folder, self.separator, self.paste, self.copy_path, self.separator, self.rename, self.delete]
 
     pub func background_menu(self) -> list[Command]:
-        return [self.new_file, self.new_folder, self.paste, self.show_hidden, self.refresh]
+        return [self.new_file, self.new_folder, self.separator, self.paste, self.separator, self.show_hidden, self.refresh]
 
     ## Refresh enabled states, then choose the menu for what was clicked: a file,
     ## a folder, or empty space (also the parent row, which selects nothing).
