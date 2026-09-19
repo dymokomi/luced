@@ -31,6 +31,7 @@ pub class Editor:
     var ai_mode: str = "ask"
     var ai_selection: str = ""
     var ai_query: str = ""
+    var heartbeat: int = 0
 
     pub func init(self, options: Options) -> unit!:
         let store = Store(options.config_directory)
@@ -108,7 +109,10 @@ pub class Editor:
         self.connections.append(self.view.sidebar.listing.on_activate(self.workspace.activate))
         self.connections.append(self.view.sidebar.context.on_open(self.view.sidebar.refresh_menu))
         self.connections.append(self.view.output.context.on_open(self.actions.output.update))
-        self.connections.append(self.app.on_frame(self.frame))
+        # A steady heartbeat replaces a per-frame callback: it pumps a running build's
+        # output, counts down the status message, polls settings on disk and picks up a
+        # finished AI reply, while an idle window renders nothing between beats.
+        self.heartbeat = try self.app.every(0.05, self.tick)
 
     func update_actions(self):
         self.actions.update(self.workspace, self.runner.busy())
@@ -209,9 +213,9 @@ pub class Editor:
         self.view.output.output.set_selection(0, 0)
         self.view.dock.select(self.view.output.body)
 
-    func frame(self, elapsed: float) -> unit!:
-        self.workspace.frame(elapsed)
-        self.configuration.poll(elapsed)
+    func tick(self) -> unit!:
+        self.workspace.frame(0.05)
+        self.configuration.poll(0.05)
         self.update_actions()
         if self.ai_waiting and ai.done():
             self.ai_waiting = false
@@ -223,6 +227,7 @@ pub class Editor:
 
     pub func close(self):
         self.app.close()
+        self.app.cancel(self.heartbeat)
         self.workspace.close()
         for connection in self.connections: connection.disconnect()
         self.connections.clear()
