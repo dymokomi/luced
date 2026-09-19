@@ -1,0 +1,119 @@
+## Read-only inspection and undoable edit tools the AI agent may call. Every path is
+## resolved under the workspace root and refused if it escapes; edits go through the
+## editor, so one Undo reverts anything the model changed. Each tool returns a short
+## string that is sent back to the model as that tool call's result.
+from files import Entries, FileKind
+from workspace.controller import Workspace
+import files
+import workspace.paths as paths
+
+let MAX_RESULT = 24000
+let MAX_FILE = 131072
+let MAX_SCAN_FILES = 400
+let MAX_MATCHES = 40
+
+pub class AiTools:
+    let workspace: Workspace
+    var scanned: int = 0
+    var found: int = 0
+
+    pub func init(self, workspace: Workspace):
+        self.workspace = workspace
+
+    ## Resolve `path` under the project root, or none if it would escape the root.
+    func resolve(self, path: str) -> str?:
+        if path.starts_with("/") or path.starts_with("~") or path.contains(".."):
+            return none
+        let root = self.workspace.directory()
+        if path == "" or path == ".":
+            return root
+        return paths.join(root, path)
+
+    func clip(self, text: str) -> str:
+        if text.length > MAX_RESULT:
+            return text[0..<MAX_RESULT] + "\n…(truncated)"
+        return text
+
+    func relative(self, full: str) -> str:
+        let root = self.workspace.directory()
+        if full.starts_with(root + "/"):
+            return full[root.length + 1..<full.length]
+        return full
+
+    pub func read_file(self, path: str) -> str:
+        let full = self.resolve(path) else return "error: path is outside the project"
+        let content = files.read_text(full, MAX_FILE) catch failure:
+            return "error: " + failure.message
+        return self.clip(content)
+
+    pub func list_dir(self, path: str) -> str:
+        let full = self.resolve(path) else return "error: path is outside the project"
+        let snapshot = Entries(full) catch failure:
+            return "error: " + failure.message
+        var out = ""
+        var shown = 0
+        for index in 0..<snapshot.count():
+            let name = snapshot.name(index) catch failure: continue
+            if name == "." or name == "..":
+                continue
+            let kind = files.path_kind(paths.join(full, name)) catch failure: continue
+            out += (name + "/\n") if kind == FileKind.directory else (name + "\n")
+            shown += 1
+            if shown >= MAX_SCAN_FILES:
+                break
+        snapshot.close()
+        return self.clip(out if out != "" else "(empty)")
+
+    pub func find_text(self, query: str) -> str:
+        if query == "":
+            return "error: empty query"
+        self.scanned = 0
+        self.found = 0
+        let out = self.scan(self.workspace.directory(), query, "")
+        return self.clip(out if out != "" else "no matches")
+
+    func scan(self, dir: str, query: str, acc: str) -> str:
+        var out = acc
+        if self.scanned >= MAX_SCAN_FILES or self.found >= MAX_MATCHES:
+            return out
+        let snapshot = Entries(dir) catch failure: return out
+        for index in 0..<snapshot.count():
+            if self.found >= MAX_MATCHES:
+                break
+            let name = snapshot.name(index) catch failure: continue
+            if name.starts_with(".") or name in ["node_modules", "build", "__pycache__"]:
+                continue
+            let full = paths.join(dir, name)
+            let kind = files.path_kind(full) catch failure: continue
+            if kind == FileKind.directory:
+                out = self.scan(full, query, out)
+            elif kind == FileKind.regular:
+                self.scanned += 1
+                if self.scanned > MAX_SCAN_FILES:
+                    break
+                let content = files.read_text(full, MAX_FILE) catch failure: continue
+                let rel = self.relative(full)
+                var lineno = 0
+                for line in content.split("\n"):
+                    lineno += 1
+                    if line.contains(query):
+                        out += rel + ":" + str(lineno) + ": " + line + "\n"
+                        self.found += 1
+                        if self.found >= MAX_MATCHES:
+                            break
+        snapshot.close()
+        return out
+
+    pub func replace_selection(self, text: str) -> str:
+        let editor = self.workspace.current_editor() else return "error: no active editor"
+        editor.insert(text) catch failure:
+            return "error: " + failure.message
+        return "ok"
+
+    pub func set_document(self, text: str) -> str:
+        let editor = self.workspace.current_editor() else return "error: no active editor"
+        editor.select_all() catch failure:
+            return "error: " + failure.message
+        editor.insert(text) catch failure:
+            return "error: " + failure.message
+        return "ok"

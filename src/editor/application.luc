@@ -13,9 +13,15 @@ from workspace.controller import Workspace
 from workspace.explorer import Explorer
 from workspace.editors import Editors
 from commands.runner import Runner
-import ai_task as ai
+from editor.ai_tools import AiTools
+import ai_agent as agent
 import workspace.paths as paths
 import files
+
+## The tools the model may call, as JSON function schemas (the agent wraps them in an
+## array). Read tools inspect the project; edit tools change the focused document and
+## are undoable. AiTools executes them on the main thread.
+let TOOLS_SCHEMA = "{\"type\":\"function\",\"function\":{\"name\":\"read_file\",\"description\":\"Read a UTF-8 text file from the project by path relative to the project root.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"list_dir\",\"description\":\"List the entries of a directory, relative to the project root.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"find_text\",\"description\":\"Search the project for lines containing a substring.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}},\"required\":[\"query\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"replace_selection\",\"description\":\"Replace the current selection in the focused editor with text (undoable).\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"set_document\",\"description\":\"Replace the entire focused document with text (undoable).\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}}"
 
 pub class Editor:
     pub let app: Application
@@ -26,11 +32,13 @@ pub class Editor:
     pub let actions: EditorActions
     let options: Options
     let connections: list[Connection]
+    let tools: AiTools
     var ai_expecting: bool = false
     var ai_waiting: bool = false
     var ai_mode: str = "ask"
     var ai_selection: str = ""
     var ai_query: str = ""
+    var ai_turns: int = 0
     var heartbeat: int = 0
 
     pub func init(self, options: Options) -> unit!:
@@ -61,6 +69,7 @@ pub class Editor:
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors)
         workspace.set_syntax(appearance.syntax)
         let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
+        let tools = AiTools(workspace)
         self.app = app
         self.workspace = workspace
         self.runner = runner
@@ -69,6 +78,7 @@ pub class Editor:
         self.actions = actions
         self.options = options
         self.connections = []
+        self.tools = tools
         self.connect()
         app.set_commands(actions.all)
         for (id, chord) in settings.shortcuts:
@@ -195,14 +205,59 @@ pub class Editor:
             return selection
         return instruction + "\n\n----- selected text -----\n" + selection
 
+    ## Start an agent conversation for the current mode and run its first turn. The
+    ## model may call tools; advance() drives each following turn from the heartbeat.
     func launch(self, content: str) -> unit!:
-        let mode = self.configuration.ai().mode(self.ai_mode)
-        if not ai.begin(self.configuration.ai().openrouter.api_key, mode.model, mode.system, content):
+        let cfg = self.configuration.ai()
+        let mode = cfg.mode(self.ai_mode)
+        agent.reset(mode.system, content, TOOLS_SCHEMA)
+        self.ai_query = content
+        self.ai_turns = 0
+        if not agent.begin(cfg.openrouter.api_key, mode.model):
             self.show_ai("An AI request is already running.")
             return
-        self.ai_query = content
         self.ai_waiting = true
         self.show_ai("Asking " + mode.model + " (" + self.ai_mode + ") …")
+
+    ## Parse a finished turn: show the final answer or an error, or execute the tools
+    ## the model requested and start the next turn. Runs on the main thread, so a tool
+    ## may read files and edit the focused document.
+    func advance(self) -> unit!:
+        let code = agent.finish() catch failure:
+            self.ai_waiting = false
+            self.show_ai("AI error: " + failure.message)
+            return
+        if code != 1:
+            self.ai_waiting = false
+            self.show_ai(agent.reply())
+            return
+        self.ai_turns += 1
+        let count = agent.tool_count()
+        for i in 0..<count:
+            let id = try agent.tool_id(i)
+            let name = try agent.tool_name(i)
+            agent.add_tool_result(id, try self.run_tool(name, i))
+        if self.ai_turns >= 8:
+            self.ai_waiting = false
+            self.show_ai("Stopped after 8 tool rounds.")
+            return
+        let cfg = self.configuration.ai()
+        if not agent.begin(cfg.openrouter.api_key, cfg.mode(self.ai_mode).model):
+            self.ai_waiting = false
+            self.show_ai("The AI request could not continue.")
+
+    func run_tool(self, name: str, index: int) -> str!:
+        if name == "read_file":
+            return self.tools.read_file(try agent.tool_arg(index, "path"))
+        if name == "list_dir":
+            return self.tools.list_dir(try agent.tool_arg(index, "path"))
+        if name == "find_text":
+            return self.tools.find_text(try agent.tool_arg(index, "query"))
+        if name == "replace_selection":
+            return self.tools.replace_selection(try agent.tool_arg(index, "text"))
+        if name == "set_document":
+            return self.tools.set_document(try agent.tool_arg(index, "text"))
+        return "error: unknown tool " + name
 
     func selection_text(self) -> str!:
         let editor = self.workspace.current_editor() else return ""
@@ -217,10 +272,8 @@ pub class Editor:
         self.workspace.frame(0.05)
         self.configuration.poll(0.05)
         self.update_actions()
-        if self.ai_waiting and ai.done():
-            self.ai_waiting = false
-            let reply = ai.take()
-            self.show_ai(reply)
+        if self.ai_waiting and agent.done():
+            self.advance()
 
     pub func run(self) -> unit!:
         self.app.run(frame_limit = 12 if self.options.smoke else 0)
