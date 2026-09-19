@@ -14,6 +14,7 @@ pub class EditorActions:
     pub let run: Command
     pub let stop: Command
     pub let discard_changes: Command
+    pub let exit: Command
     pub let fold: Command
     pub let fold_all: Command
     pub let unfold_all: Command
@@ -49,12 +50,14 @@ pub class EditorActions:
         let run = Command("Run", Shortcut(Key.f5), id = "run")
         let stop = Command("Stop", Shortcut(Key.f5, shift = true), id = "stop")
         let discard_changes = Command("Discard & close", id = "discard")
+        let exit = Command("Exit", Shortcut(Key.q, primary = true), id = "exit")
         self.save = save
         self.save_all = save_all
         self.build = build
         self.run = run
         self.stop = stop
         self.discard_changes = discard_changes
+        self.exit = exit
         let fold = Command("Toggle fold", Shortcut(Key.left_bracket, primary = true, alt = true), id = "fold")
         let fold_all = Command("Fold all", Shortcut(Key.left_bracket, primary = true, shift = true, alt = true), id = "fold_all")
         let unfold_all = Command("Unfold all", Shortcut(Key.right_bracket, primary = true, shift = true, alt = true), id = "unfold_all")
@@ -103,7 +106,7 @@ pub class EditorActions:
         self.editing = editing
         self.output = output
         self.files = files
-        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, word_wrap, ask_ai, write_ai, spellcheck_ai, palette, settings, theme, ai_settings, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
+        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, exit, fold, fold_all, unfold_all, word_wrap, ask_ai, write_ai, spellcheck_ai, palette, settings, theme, ai_settings, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
 
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:
@@ -125,3 +128,9 @@ pub class EditorActions:
         self.fold.set_enabled(workspace.has_document())
         self.fold_all.set_enabled(workspace.has_document())
         self.unfold_all.set_enabled(workspace.has_document())
+        var has_selection = false
+        if let editor = workspace.current_editor():
+            has_selection = editor.has_selection()
+        self.spellcheck_ai.set_enabled(has_selection)
+        self.ask_ai.set_enabled(workspace.has_document())
+        self.write_ai.set_enabled(workspace.has_document())

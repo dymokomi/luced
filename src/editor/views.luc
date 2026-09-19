@@ -1,7 +1,7 @@
 ## Named view components expose only the controls that the workspace updates.
 ## Geometry uses font cells and text lines; continuous GPU content still fills
 ## the remaining area. Menus and toolbars share the same native actions.
-from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt
+from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, Command
 from editor.actions import EditorActions
 from editor.file_actions import FileActions
 from workspace.explorer import Explorer
@@ -57,11 +57,12 @@ pub class EditorView:
         let sidebar = Sidebar(explorer, actions, font)
         let output = OutputPane(actions, font)
         let status = Text("Ready", font = font)
+        let sep = Command("", divider = true)
         let menu = Toolbar([
-            Menu("File", [actions.new_tab, actions.files.new_file, actions.files.new_folder, actions.save, actions.save_all, actions.settings, actions.theme, actions.ai_settings, actions.discard_changes], font = font),
+            Menu("File", [actions.new_tab, actions.files.new_file, actions.files.new_folder, sep, actions.save, actions.save_all, sep, actions.settings, actions.theme, actions.ai_settings, sep, actions.discard_changes, actions.exit], font = font),
             Menu("Edit", actions.editing.all, font = font),
-            Menu("Build", [actions.build, actions.run, actions.stop], font = font),
-            Menu("View", [actions.ask_ai, actions.write_ai, actions.spellcheck_ai, actions.palette, actions.word_wrap, actions.fold, actions.fold_all, actions.unfold_all, actions.next_pane, actions.previous_pane, actions.reload], font = font),
+            Menu("Build", [actions.build, actions.run, sep, actions.stop], font = font),
+            Menu("View", [actions.ask_ai, actions.write_ai, actions.spellcheck_ai, sep, actions.palette, actions.word_wrap, sep, actions.fold, actions.fold_all, actions.unfold_all, sep, actions.next_pane, actions.previous_pane, sep, actions.reload], font = font),
             Spacer(),
             Button(action = actions.save, font = font),
             Button(action = actions.build, font = font),

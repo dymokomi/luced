@@ -232,6 +232,12 @@ pub class Workspace:
         self.editors.set_wrap_all(enabled)
         self.report("Word wrap " + ("on" if enabled else "off"))
 
+    ## The Exit command and the window close button share one path: close now when
+    ## nothing is unsaved, otherwise can_close raises the save prompt and we wait.
+    pub func request_exit(self) -> unit!:
+        if try self.can_close():
+            self.app.stop()
+
     pub func can_close(self) -> bool!:
         if self.discard_confirmed:
             return true

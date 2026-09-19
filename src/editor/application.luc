@@ -108,6 +108,7 @@ pub class Editor:
         self.connections.append(self.actions.spellcheck_ai.on_trigger(self.spellcheck_ai))
         self.connections.append(self.view.prompt.on_submit(self.ai_submit))
         self.connections.append(self.actions.reload.on_trigger(self.configuration.reload))
+        self.connections.append(self.actions.exit.on_trigger(self.workspace.request_exit))
         self.connections.append(self.actions.next_pane.on_trigger(self.next_pane))
         self.connections.append(self.actions.previous_pane.on_trigger(self.previous_pane))
         self.connections.append(self.actions.focus_explorer.on_trigger(self.focus_explorer))
