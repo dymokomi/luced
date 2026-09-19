@@ -194,12 +194,23 @@ holds no key by default, and — because it can hold API keys — is meant to st
 private:
 
 ```toml
-[models]
-# Each role is "provider/model"; providers are openrouter and claude_code.
-ask        = ""
-write      = ""
-spellcheck = ""
-inline     = ""
+[ask]
+provider = "openrouter"
+model    = "deepseek/deepseek-chat"
+system   = "You are a concise coding assistant."
+
+[write]
+provider = "openrouter"
+model    = "anthropic/claude-sonnet"
+system   = ""
+
+[spellcheck]
+provider = "openrouter"
+model    = "openai/gpt-4o-mini"
+
+[inline]
+provider = "claude_code"
+model    = "sonnet"
 
 [openrouter]
 api_key  = ""                     # a literal key, or leave empty and use key_env
@@ -210,13 +221,14 @@ base_url = "https://openrouter.ai/api/v1"
 command = "claude"
 ```
 
-`ask`, `write`, `spellcheck` and `inline` each bind a role to a `provider/model`;
-every role is optional. A role naming an unknown provider, or an unknown table or
-key, is an error like any other configuration mistake. A key may be a literal
-`api_key` or the name of an environment variable in `key_env`, read only when a
-request is made. Table headers are flat (`[openrouter]`), since the reader accepts
-only bare table names. This release validates and stores the schema; the requests
-themselves land in a later change.
+Each mode — `ask`, `write`, `spellcheck`, `inline` — has a `provider` (default
+`openrouter`), a `model` (the provider's own id, which may contain slashes), and an
+optional `system` prompt. Every mode is optional. A mode naming an unknown
+provider, or an unknown table or key, is an error like any other configuration
+mistake. A key may be a literal `api_key` or the name of an environment variable in
+`key_env`, read only when a request is made. Table headers are flat (`[openrouter]`),
+since the reader accepts only bare table names. This release validates and stores
+the schema; the requests themselves land in a later change.
 
 The application checks for changed contents every half second and validates the
 files before applying them. Font changes update the shared `Font` object used by

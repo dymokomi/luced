@@ -18,9 +18,9 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     let original = store.read_settings()
     assert(Settings(original).font_size == 14.0)
     assert(Appearance(store.read_theme()).theme.gutter != Appearance().theme.background)
-    # The default ai.toml exists and leaves every role unset.
+    # The default ai.toml exists and leaves every mode unset.
     assert(not AiConfig(store.read_ai()).ready("ask"))
-    files.write_text(store.ai_path, "[models]\nask = \"openrouter/anthropic/claude-opus\"\n[openrouter]\napi_key = \"sk-test\"\n")
+    files.write_text(store.ai_path, "[ask]\nmodel = \"deepseek/deepseek-chat\"\nsystem = \"Be terse.\"\n[openrouter]\napi_key = \"sk-test\"\n")
     files.write_text(store.settings_path, "[editor]\nfont_size = 17.0 # preserved\nfont_family = 'Monospace # λ'\n")
     let reopened = Store(directory)
     assert(reopened.read_settings().contains("# preserved"))
@@ -51,16 +51,17 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     editor.app.layout(1000.0, 700.0)
     let document_panel = editor.workspace.current_panel() else error(files.failed, "document panel was not opened")
     assert(document_panel.layout().contains_focus())
-    # The AI config loads at startup; a filled ai.toml makes its role ready.
+    # The AI config loads at startup; a filled ai.toml makes its mode ready.
     assert(editor.configuration.ai().ready("ask") and editor.configuration.ai().openrouter.api_key == "sk-test")
+    assert(editor.configuration.ai().ask.system == "Be terse.")
     editor.configuration.edit_ai()
     let ai_doc = editor.workspace.current_document() else error(files.failed, "ai.toml did not open")
     assert(ai_doc.path == store.ai_path)
     # A malformed ai.toml is rejected on reload; the last good config is kept.
-    files.write_text(store.ai_path, "[models]\nask = \"mistral/large\"\n")
+    files.write_text(store.ai_path, "[ask]\nprovider = \"mistral\"\nmodel = \"large\"\n")
     editor.configuration.reload()
     assert(editor.configuration.ai().ready("ask") and store.read_ai().contains("mistral"))
-    files.write_text(store.ai_path, "[models]\nspellcheck = \"claude_code\"\n[claude_code]\ncommand = \"claude\"\n")
+    files.write_text(store.ai_path, "[spellcheck]\nprovider = \"claude_code\"\nmodel = \"sonnet\"\n[claude_code]\ncommand = \"claude\"\n")
     editor.configuration.reload()
     assert(editor.configuration.ai().ready("spellcheck") and not editor.configuration.ai().ready("ask"))
     editor.workspace.open(fixture)
