@@ -21,6 +21,7 @@ pub class EditorActions:
     pub let palette: Command
     pub let settings: Command
     pub let theme: Command
+    pub let ai_settings: Command
     pub let reload: Command
     pub let next_pane: Command
     pub let previous_pane: Command
@@ -65,6 +66,8 @@ pub class EditorActions:
         self.settings = settings
         let theme = Command("Edit Theme", id = "edit_theme")
         self.theme = theme
+        let ai_settings = Command("Edit AI Settings", id = "edit_ai_settings")
+        self.ai_settings = ai_settings
         let reload = Command("Reload Configuration", id = "reload_config")
         self.reload = reload
         let next_pane = Command("Next Panel", Shortcut(Key.f6), id = "next_pane")
@@ -91,7 +94,7 @@ pub class EditorActions:
         self.editing = editing
         self.output = output
         self.files = files
-        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, word_wrap, palette, settings, theme, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
+        self.all = [new_tab, save, save_all, build, run, stop, discard_changes, fold, fold_all, unfold_all, word_wrap, palette, settings, theme, ai_settings, reload, next_pane, previous_pane, focus_explorer, focus_editor, focus_output, focus_left, focus_right, focus_up, focus_down] + files.all + editing.all + output.all
 
 
     pub func connect(self, workspace: Workspace) -> list[Connection]!:

@@ -5,4 +5,5 @@ source = "src"
 [dependencies]
 luce_ui = "../luce-ui"
 luce_config = "../luce-config"
+luce_ai = "../luce-ai"
 

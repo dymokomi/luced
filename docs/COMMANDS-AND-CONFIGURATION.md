@@ -36,7 +36,7 @@ Luced supplies the actions and their availability:
 | Explorer (file) | Cut, Copy, Copy Path, Rename, Delete |
 | Editor | Undo, Redo, Cut, Copy, Paste, Select All, Save, folding |
 | Output | Copy Output Selection, Select All Output, Clear Output |
-| Other application chrome | Command Palette, Edit Settings, Edit Theme, Reload Configuration, pane navigation |
+| Other application chrome | Command Palette, Edit Settings, Edit Theme, Edit AI Settings, Reload Configuration, pane navigation |
 
 The explorer menu is context sensitive: the file pane picks its entries from the
 selection the click just made, so files, folders and empty space each get their
@@ -188,7 +188,37 @@ title and body retain the same font size; changing the font updates header and
 icon geometry. `caret_width` sets the blinking text caret's thickness in points
 (1–8, default 2).
 
-The application checks for changed contents every half second and validates both
+`ai.toml` configures AI models and providers. **Edit AI Settings** opens it with
+the same protections as the other files. It is created once and never rewritten,
+holds no key by default, and — because it can hold API keys — is meant to stay
+private:
+
+```toml
+[models]
+# Each role is "provider/model"; providers are openrouter and claude_code.
+ask        = ""
+write      = ""
+spellcheck = ""
+inline     = ""
+
+[openrouter]
+api_key  = ""                     # a literal key, or leave empty and use key_env
+key_env  = "OPENROUTER_API_KEY"   # an environment variable holding the key
+base_url = "https://openrouter.ai/api/v1"
+
+[claude_code]
+command = "claude"
+```
+
+`ask`, `write`, `spellcheck` and `inline` each bind a role to a `provider/model`;
+every role is optional. A role naming an unknown provider, or an unknown table or
+key, is an error like any other configuration mistake. A key may be a literal
+`api_key` or the name of an environment variable in `key_env`, read only when a
+request is made. Table headers are flat (`[openrouter]`), since the reader accepts
+only bare table names. This release validates and stores the schema; the requests
+themselves land in a later change.
+
+The application checks for changed contents every half second and validates the
 files before applying them. Font changes update the shared `Font` object used by
 every control. Theme-only changes retain its glyph cache. Syntax colors replace
 decorations without changing document text, selection or history. Compiler

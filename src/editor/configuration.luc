@@ -3,6 +3,7 @@
 from configuration.store import Store
 from configuration.settings import Settings
 from configuration.theme import Appearance
+from config import AiConfig
 from editor.options import Options
 from ui import Application, Font, Layout
 from workspace.controller import Workspace
@@ -18,6 +19,8 @@ pub class Configuration:
     let options: Options
     var settings_text: str
     var theme_text: str
+    var ai_text: str
+    var ai_config: AiConfig
     var family: str
     var elapsed: float = 0.0
 
@@ -32,7 +35,15 @@ pub class Configuration:
         self.options = options
         self.settings_text = store.read_settings()
         self.theme_text = store.read_theme()
+        self.ai_text = store.read_ai()
+        self.ai_config = AiConfig(self.ai_text) catch failure:
+            recover AiConfig()
         self.family = family
+
+    ## The current AI settings; always a valid object, defaults when the file is
+    ## malformed until a corrected version is applied.
+    pub func ai(self) -> AiConfig:
+        return self.ai_config
 
     pub func edit_settings(self) -> unit!:
         self.workspace.open(self.store.settings_path)
@@ -40,17 +51,23 @@ pub class Configuration:
     pub func edit_theme(self) -> unit!:
         self.workspace.open(self.store.theme_path)
 
+    pub func edit_ai(self) -> unit!:
+        self.workspace.open(self.store.ai_path)
+
     pub func reload(self) -> unit!:
-        self.apply(self.store.read_settings(), self.store.read_theme()) catch failure:
+        self.apply(self.store.read_settings(), self.store.read_theme(), self.store.read_ai()) catch failure:
             self.workspace.report("Configuration: " + failure.message)
 
-    func apply(self, settings_text: str, theme_text: str) -> unit!:
+    func apply(self, settings_text: str, theme_text: str, ai_text: str) -> unit!:
         self.settings_text = settings_text
         self.theme_text = theme_text
+        self.ai_text = ai_text
         let settings = Settings(settings_text) catch failure:
             error(failure.code, "settings.toml: " + failure.message)
         let appearance = Appearance(theme_text) catch failure:
             error(failure.code, "theme.toml: " + failure.message)
+        self.ai_config = AiConfig(ai_text) catch failure:
+            error(failure.code, "ai.toml: " + failure.message)
         if self.font.size() != settings.font_size or self.family != settings.font_family:
             self.font.configure(settings.font_size, settings.font_family)
             self.family = settings.font_family
@@ -72,5 +89,6 @@ pub class Configuration:
     func changed(self) -> unit!:
         let settings = self.store.read_settings()
         let theme = self.store.read_theme()
-        if settings != self.settings_text or theme != self.theme_text:
-            self.apply(settings, theme)
+        let ai = self.store.read_ai()
+        if settings != self.settings_text or theme != self.theme_text or ai != self.ai_text:
+            self.apply(settings, theme, ai)

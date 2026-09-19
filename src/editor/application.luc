@@ -84,6 +84,7 @@ pub class Editor:
         self.connections.append(self.actions.palette.on_trigger(self.open_palette))
         self.connections.append(self.actions.settings.on_trigger(self.configuration.edit_settings))
         self.connections.append(self.actions.theme.on_trigger(self.configuration.edit_theme))
+        self.connections.append(self.actions.ai_settings.on_trigger(self.configuration.edit_ai))
         self.connections.append(self.actions.reload.on_trigger(self.configuration.reload))
         self.connections.append(self.actions.next_pane.on_trigger(self.next_pane))
         self.connections.append(self.actions.previous_pane.on_trigger(self.previous_pane))
