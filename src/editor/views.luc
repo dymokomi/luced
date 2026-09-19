@@ -61,7 +61,7 @@ pub class EditorView:
             Menu("File", [actions.new_tab, actions.files.new_file, actions.files.new_folder, actions.save, actions.save_all, actions.settings, actions.theme, actions.ai_settings, actions.discard_changes], font = font),
             Menu("Edit", actions.editing.all, font = font),
             Menu("Build", [actions.build, actions.run, actions.stop], font = font),
-            Menu("View", [actions.palette, actions.word_wrap, actions.fold, actions.fold_all, actions.unfold_all, actions.next_pane, actions.previous_pane, actions.reload], font = font),
+            Menu("View", [actions.ask_ai, actions.palette, actions.word_wrap, actions.fold, actions.fold_all, actions.unfold_all, actions.next_pane, actions.previous_pane, actions.reload], font = font),
             Spacer(),
             Button(action = actions.save, font = font),
             Button(action = actions.build, font = font),

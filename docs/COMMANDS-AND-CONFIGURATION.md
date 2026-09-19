@@ -109,6 +109,7 @@ save = "cmd+s"
 build = "cmd+b"
 run = "f5"
 toggle_word_wrap = "cmd+alt+z"
+ask_ai = "cmd+i"
 command_palette = "cmd+p"
 focus_editor = "cmd+2"
 focus_left = "cmd+alt+left"
@@ -126,7 +127,7 @@ case-insensitive: `cmd`/`ctrl`/`super` is the primary modifier, plus `shift` and
 or a named key like `enter`). `"none"` unbinds. A command absent from the table
 keeps its built-in default; an unknown id is ignored. The command ids are those
 shown in the palette — `new_tab`, `save`, `save_all`, `build`, `run`, `stop`, `fold`,
-`fold_all`, `unfold_all`, `toggle_word_wrap`, `command_palette`, `next_pane`,
+`fold_all`, `unfold_all`, `toggle_word_wrap`, `ask_ai`, `command_palette`, `next_pane`,
 `previous_pane`, `focus_explorer`, `focus_editor`, `focus_output`, `focus_left`,
 `focus_right`, `focus_up`, `focus_down`. Editing keys (undo, cut, copy, paste,
 select all) are handled inside the text editor, not here.
@@ -227,8 +228,13 @@ optional `system` prompt. Every mode is optional. A mode naming an unknown
 provider, or an unknown table or key, is an error like any other configuration
 mistake. A key may be a literal `api_key` or the name of an environment variable in
 `key_env`, read only when a request is made. Table headers are flat (`[openrouter]`),
-since the reader accepts only bare table names. This release validates and stores
-the schema; the requests themselves land in a later change.
+since the reader accepts only bare table names.
+
+**Ask AI** (Cmd/Ctrl+I) prompts for a question and sends it to the `ask` mode's
+model over a native HTTPS connection — no external tools — with the mode's system
+prompt; the reply appears in the Output pane. Requests use OpenRouter (the
+`claude_code` provider is not wired yet), so the `ask` mode needs a model and a
+credential, or the command reports what to configure.
 
 The application checks for changed contents every half second and validates the
 files before applying them. Font changes update the shared `Font` object used by

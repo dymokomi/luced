@@ -13,6 +13,7 @@ from workspace.controller import Workspace
 from workspace.explorer import Explorer
 from workspace.editors import Editors
 from commands.runner import Runner
+from openrouter import complete
 import workspace.paths as paths
 import files
 
@@ -25,6 +26,9 @@ pub class Editor:
     pub let actions: EditorActions
     let options: Options
     let connections: list[Connection]
+    var ai_expecting: bool = false
+    var ai_stage: int = 0
+    var ai_query: str = ""
 
     pub func init(self, options: Options) -> unit!:
         let store = Store(options.config_directory)
@@ -85,6 +89,8 @@ pub class Editor:
         self.connections.append(self.actions.settings.on_trigger(self.configuration.edit_settings))
         self.connections.append(self.actions.theme.on_trigger(self.configuration.edit_theme))
         self.connections.append(self.actions.ai_settings.on_trigger(self.configuration.edit_ai))
+        self.connections.append(self.actions.ask_ai.on_trigger(self.ask_ai))
+        self.connections.append(self.view.prompt.on_submit(self.ai_submit))
         self.connections.append(self.actions.reload.on_trigger(self.configuration.reload))
         self.connections.append(self.actions.next_pane.on_trigger(self.next_pane))
         self.connections.append(self.actions.previous_pane.on_trigger(self.previous_pane))
@@ -131,10 +137,53 @@ pub class Editor:
     pub func focus_down(self) -> unit!:
         self.view.dock.focus_direction(0.0, 1.0)
 
+    ## Cmd+I: ask the configured "ask" model. The request blocks briefly, so it is
+    ## deferred one frame past showing "Asking …" and the reply lands in the output.
+    pub func ask_ai(self) -> unit!:
+        if self.configuration.ai().mode("ask").model == "":
+            self.workspace.report("Set a model for the ask mode in Edit AI Settings")
+            return
+        self.actions.files.reset_operation()
+        self.ai_expecting = true
+        self.view.prompt.open("Ask AI", accept = "Ask")
+
+    func ai_submit(self, text: str) -> unit!:
+        if not self.ai_expecting:
+            return
+        self.ai_expecting = false
+        if text == "":
+            return
+        self.ai_query = text
+        self.show_ai("Asking " + self.configuration.ai().mode("ask").model + " …")
+        self.ai_stage = 1
+
+    func run_ai(self) -> unit!:
+        let config = self.configuration.ai()
+        let mode = config.mode("ask")
+        if not config.ready("ask"):
+            self.show_ai("The ask mode is not ready: set a model and a credential in Edit AI Settings.")
+            return
+        if mode.provider != "openrouter":
+            self.show_ai("Only the openrouter provider is wired up so far; ask uses " + mode.provider + ".")
+            return
+        let reply = complete(config.openrouter.api_key, mode.model, mode.system, self.ai_query)
+        self.show_ai(self.ai_query + "\n\n" + reply + "\n")
+
+    func show_ai(self, text: str) -> unit!:
+        self.view.output.output.set_text(text)
+        self.view.output.output.set_selection(0, 0)
+        self.view.dock.select(self.view.output.body)
+
     func frame(self, elapsed: float) -> unit!:
         self.workspace.frame(elapsed)
         self.configuration.poll(elapsed)
         self.update_actions()
+        if self.ai_stage == 1:
+            self.ai_stage = 2
+        elif self.ai_stage == 2:
+            self.ai_stage = 0
+            self.run_ai() catch failure:
+                self.show_ai("AI error: " + failure.message)
 
     pub func run(self) -> unit!:
         self.app.run(frame_limit = 12 if self.options.smoke else 0)

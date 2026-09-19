@@ -178,6 +178,11 @@ pub class FileActions:
         let entry = workspace.selected_entry() else return
         clipboard.write_text(entry.path)
 
+    ## Clear any pending file-prompt operation, so another owner (the AI prompt)
+    ## can reuse the shared TextPrompt without triggering a stale file action.
+    pub func reset_operation(self) -> unit!:
+        self.operation = ""
+
     func submit(self, text: str) -> unit!:
         let workspace = self.workspace else return
         let operation = self.operation
