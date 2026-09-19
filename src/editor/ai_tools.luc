@@ -2,6 +2,7 @@
 ## resolved under the workspace root and refused if it escapes; edits go through the
 ## editor, so one Undo reverts anything the model changed. Each tool returns a short
 ## string that is sent back to the model as that tool call's result.
+from ui import TextEditor
 from files import Entries, FileKind
 from workspace.controller import Workspace
 import files
@@ -104,16 +105,86 @@ pub class AiTools:
         snapshot.close()
         return out
 
-    pub func replace_selection(self, text: str) -> str:
+    ## The current document with 1-based line numbers, so the model edits by line.
+    pub func read_document(self) -> str:
         let editor = self.workspace.current_editor() else return "error: no active editor"
-        editor.insert(text) catch failure:
+        let full = editor.text() catch failure:
             return "error: " + failure.message
-        return "ok"
+        return self.numbered(full)
 
+    ## Replace lines `first`..`last` (inclusive, 1-based) with `text` (which may span
+    ## several lines or be empty). Applied as one undoable edit; returns the updated
+    ## numbered document so the next edit uses fresh line numbers.
+    pub func replace_lines(self, first: int, last: int, text: str) -> str:
+        let editor = self.workspace.current_editor() else return "error: no active editor"
+        let source = editor.text() catch failure:
+            return "error: " + failure.message
+        let lines = source.split("\n")
+        let count = lines.length
+        var lo = first if first >= 1 else 1
+        var hi = last if last <= count else count
+        if lo > hi:
+            return "error: first line is after last line"
+        let rebuilt = self.join(lines[0..<lo - 1] + text.split("\n") + lines[hi..<count])
+        return self.apply(editor, rebuilt)
+
+    ## Insert `text` as new lines after line `after` (0 = at the very top).
+    pub func insert_lines(self, after: int, text: str) -> str:
+        let editor = self.workspace.current_editor() else return "error: no active editor"
+        let source = editor.text() catch failure:
+            return "error: " + failure.message
+        let lines = source.split("\n")
+        let count = lines.length
+        var at = after if after >= 0 else 0
+        if at > count:
+            at = count
+        let rebuilt = self.join(lines[0..<at] + text.split("\n") + lines[at..<count])
+        return self.apply(editor, rebuilt)
+
+    ## Delete lines `first`..`last` (inclusive, 1-based).
+    pub func delete_lines(self, first: int, last: int) -> str:
+        let editor = self.workspace.current_editor() else return "error: no active editor"
+        let source = editor.text() catch failure:
+            return "error: " + failure.message
+        let lines = source.split("\n")
+        let count = lines.length
+        var lo = first if first >= 1 else 1
+        var hi = last if last <= count else count
+        if lo > hi:
+            return "error: first line is after last line"
+        let rebuilt = self.join(lines[0..<lo - 1] + lines[hi..<count])
+        return self.apply(editor, rebuilt)
+
+    ## Replace the entire document with `text` (a reliable whole-file rewrite that avoids
+    ## line-number arithmetic — best for a full pass like spellchecking the whole file).
     pub func set_document(self, text: str) -> str:
         let editor = self.workspace.current_editor() else return "error: no active editor"
+        return self.apply(editor, text)
+
+    ## Replace the whole document with `text` as one undoable edit, then report the new
+    ## numbered document. The editor is the single source of truth, so every edit tool
+    ## rebuilds from the current text and lands here.
+    func apply(self, editor: TextEditor, text: str) -> str:
         editor.select_all() catch failure:
             return "error: " + failure.message
         editor.insert(text) catch failure:
             return "error: " + failure.message
-        return "ok"
+        return "ok — document is now:\n" + self.numbered(text)
+
+    func join(self, lines: list[str]) -> str:
+        var result = ""
+        for index in 0..<lines.length:
+            if index > 0:
+                result += "\n"
+            result += lines[index]
+        return result
+
+    func numbered(self, text: str) -> str:
+        let lines = text.split("\n")
+        var result = ""
+        for index in 0..<lines.length:
+            result += str(index + 1) + ": " + lines[index] + "\n"
+            if result.length > MAX_RESULT:
+                result += "…(truncated)\n"
+                break
+        return result

@@ -70,7 +70,7 @@ pub class EditorActions:
         self.ask_ai = ask_ai
         let write_ai = Command("AI Write", Shortcut(Key.i, primary = true, shift = true), id = "write_ai")
         self.write_ai = write_ai
-        let spellcheck_ai = Command("AI Spellcheck Selection", id = "spellcheck_ai")
+        let spellcheck_ai = Command("Spellcheck", id = "spellcheck_ai")
         self.spellcheck_ai = spellcheck_ai
         let palette = Command("Command Palette", Shortcut(Key.p, primary = true), id = "command_palette")
         self.palette = palette
@@ -116,7 +116,7 @@ pub class EditorActions:
             self.fold.on_trigger(workspace.toggle_fold), self.fold_all.on_trigger(workspace.fold_all),
             self.unfold_all.on_trigger(workspace.unfold_all), self.word_wrap.on_trigger(workspace.toggle_word_wrap)]
 
-    pub func update(self, workspace: Workspace, busy: bool):
+    pub func update(self, workspace: Workspace, busy: bool) -> unit!:
         self.editing.bind(workspace.current_editor())
         self.output.update()
         self.files.update()
@@ -131,6 +131,7 @@ pub class EditorActions:
         var has_selection = false
         if let editor = workspace.current_editor():
             has_selection = editor.has_selection()
-        self.spellcheck_ai.set_enabled(has_selection)
+        try self.spellcheck_ai.set_text("Spellcheck Selection" if has_selection else "Spellcheck")
+        self.spellcheck_ai.set_enabled(workspace.has_document())
         self.ask_ai.set_enabled(workspace.has_document())
         self.write_ai.set_enabled(workspace.has_document())
