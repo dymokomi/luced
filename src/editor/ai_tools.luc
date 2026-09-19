@@ -105,6 +105,16 @@ pub class AiTools:
         snapshot.close()
         return out
 
+    ## The selected text and the 1-based line range it covers, so the model can discover
+    ## what the user is pointing at and where. Reports when nothing is selected.
+    pub func read_selection(self) -> str:
+        let editor = self.workspace.current_editor() else return "error: no active editor"
+        if not editor.has_selection():
+            return "No text is selected — use read_document to see the whole file."
+        let text = editor.selected_text() catch failure:
+            return "error: " + failure.message
+        return "Lines " + str(editor.selection_first_line()) + " to " + str(editor.selection_last_line()) + " are selected:\n" + self.clip(text)
+
     ## The current document with 1-based line numbers, so the model edits by line.
     pub func read_document(self) -> str:
         let editor = self.workspace.current_editor() else return "error: no active editor"

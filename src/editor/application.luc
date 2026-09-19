@@ -21,7 +21,7 @@ import files
 ## The tools the model may call, as JSON function schemas (the agent wraps them in an
 ## array). Read tools inspect the project; edit tools change the focused document and
 ## are undoable. AiTools executes them on the main thread.
-let TOOLS_SCHEMA = "{\"type\":\"function\",\"function\":{\"name\":\"read_document\",\"description\":\"Return the whole focused document with 1-based line numbers.\",\"parameters\":{\"type\":\"object\",\"properties\":{}}}},{\"type\":\"function\",\"function\":{\"name\":\"replace_lines\",\"description\":\"Replace lines first..last (inclusive, 1-based) with text, which may span several lines or be empty. One undoable edit; returns the updated numbered document.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"first\":{\"type\":\"integer\"},\"last\":{\"type\":\"integer\"},\"text\":{\"type\":\"string\"}},\"required\":[\"first\",\"last\",\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"insert_lines\",\"description\":\"Insert text as new lines after line 'after' (0 = at the top).\",\"parameters\":{\"type\":\"object\",\"properties\":{\"after\":{\"type\":\"integer\"},\"text\":{\"type\":\"string\"}},\"required\":[\"after\",\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"delete_lines\",\"description\":\"Delete lines first..last (inclusive, 1-based).\",\"parameters\":{\"type\":\"object\",\"properties\":{\"first\":{\"type\":\"integer\"},\"last\":{\"type\":\"integer\"}},\"required\":[\"first\",\"last\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"set_document\",\"description\":\"Replace the entire document with text (one undoable edit). Best for a full rewrite such as spellchecking the whole file, since it needs no line numbers.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"read_file\",\"description\":\"Read a UTF-8 text file from the project by path relative to the project root.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"list_dir\",\"description\":\"List the entries of a directory, relative to the project root.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"find_text\",\"description\":\"Search the project for lines containing a substring.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}},\"required\":[\"query\"]}}}"
+let TOOLS_SCHEMA = "{\"type\":\"function\",\"function\":{\"name\":\"read_selection\",\"description\":\"Return the selected text and the 1-based line range it covers, or a note when nothing is selected.\",\"parameters\":{\"type\":\"object\",\"properties\":{}}}},{\"type\":\"function\",\"function\":{\"name\":\"read_document\",\"description\":\"Return the whole focused document with 1-based line numbers.\",\"parameters\":{\"type\":\"object\",\"properties\":{}}}},{\"type\":\"function\",\"function\":{\"name\":\"replace_lines\",\"description\":\"Replace lines first..last (inclusive, 1-based) with text, which may span several lines or be empty. One undoable edit; returns the updated numbered document.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"first\":{\"type\":\"integer\"},\"last\":{\"type\":\"integer\"},\"text\":{\"type\":\"string\"}},\"required\":[\"first\",\"last\",\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"insert_lines\",\"description\":\"Insert text as new lines after line 'after' (0 = at the top).\",\"parameters\":{\"type\":\"object\",\"properties\":{\"after\":{\"type\":\"integer\"},\"text\":{\"type\":\"string\"}},\"required\":[\"after\",\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"delete_lines\",\"description\":\"Delete lines first..last (inclusive, 1-based).\",\"parameters\":{\"type\":\"object\",\"properties\":{\"first\":{\"type\":\"integer\"},\"last\":{\"type\":\"integer\"}},\"required\":[\"first\",\"last\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"set_document\",\"description\":\"Replace the entire document with text (one undoable edit). Best for a full rewrite such as spellchecking the whole file, since it needs no line numbers.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"read_file\",\"description\":\"Read a UTF-8 text file from the project by path relative to the project root.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"list_dir\",\"description\":\"List the entries of a directory, relative to the project root.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}},{\"type\":\"function\",\"function\":{\"name\":\"find_text\",\"description\":\"Search the project for lines containing a substring.\",\"parameters\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}},\"required\":[\"query\"]}}}"
 
 pub class Editor:
     pub let app: Application
@@ -214,9 +214,8 @@ pub class Editor:
         if mode == "ask":
             return self.combine(instruction, selection)
         let request = instruction if instruction != "" else "Correct the spelling and grammar."
-        if selection != "":
-            return request + "\n\nEdit ONLY this selected text, changing it in place within the document:\n\n" + selection
-        return request + "\n\nNo selection is active — you may edit anywhere in the document."
+        let hint = " There is a selection." if selection != "" else " There is no selection."
+        return request + "\n\n" + hint + " Call read_selection to see any selected text and the lines it covers, or read_document for the whole file, then edit accordingly."
 
     ## Start an agent conversation for the current mode and run its first turn. The
     ## model may call tools; advance() drives each following turn from the heartbeat.
@@ -247,30 +246,53 @@ pub class Editor:
     func advance(self) -> unit!:
         let code = agent.finish() catch failure:
             self.ai_waiting = false
+            self.clear_ai_region()
             try self.ai_note("✗ error: " + failure.message)
             return
         if code != 1:
             self.ai_waiting = false
+            self.clear_ai_region()
             try self.ai_note("✓ " + agent.reply())
             return
         self.ai_turns += 1
         for i in try self.tool_order(agent.tool_count()):
             let name = try agent.tool_name(i)
             try self.ai_note("• " + try self.tool_summary(name, i))
+            try self.mark_ai_region(name, i)
             agent.add_tool_result(try agent.tool_id(i), try self.run_tool(name, i))
         if self.ai_turns >= 8:
             self.ai_waiting = false
+            self.clear_ai_region()
             try self.ai_note("✗ stopped after 8 tool rounds")
             return
         let cfg = self.configuration.ai()
         if not agent.begin(cfg.openrouter.api_key, cfg.mode(self.ai_mode).model):
             self.ai_waiting = false
+            self.clear_ai_region()
             try self.ai_note("✗ the request could not continue")
             return
         try self.ai_note("→ asking the model …")
 
+    ## Stripe the gutter of the lines the current tool touches, so the document shows
+    ## what the AI is looking at or changing as it works.
+    func mark_ai_region(self, name: str, index: int) -> unit!:
+        let editor = self.workspace.current_editor() else return
+        if name == "read_selection":
+            editor.set_ai_lines(editor.selection_first_line(), editor.selection_last_line())
+        elif name == "replace_lines" or name == "delete_lines":
+            editor.set_ai_lines(try self.line_arg(index, "first"), try self.line_arg(index, "last"))
+        elif name == "insert_lines":
+            let after = try self.line_arg(index, "after")
+            editor.set_ai_lines(after, after + 1)
+
+    func clear_ai_region(self) -> unit:
+        let editor = self.workspace.current_editor() else return
+        editor.clear_ai_lines()
+
     ## A short human description of a tool call, for the live transcript.
     func tool_summary(self, name: str, index: int) -> str!:
+        if name == "read_selection":
+            return "reading the selection"
         if name == "read_document":
             return "reading the document"
         if name == "set_document":
@@ -290,6 +312,8 @@ pub class Editor:
         return name
 
     func run_tool(self, name: str, index: int) -> str!:
+        if name == "read_selection":
+            return self.tools.read_selection()
         if name == "read_document":
             return self.tools.read_document()
         if name == "replace_lines":
