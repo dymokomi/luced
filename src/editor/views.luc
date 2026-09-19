@@ -1,7 +1,7 @@
 ## Named view components expose only the controls that the workspace updates.
 ## Geometry uses font cells and text lines; continuous GPU content still fills
 ## the remaining area. Menus and toolbars share the same native actions.
-from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, Command
+from ui import Font, Text, TextEditor, ListView, VStack, Toolbar, Menu, Button, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, ConfirmDialog, Command
 from editor.actions import EditorActions
 from editor.file_actions import FileActions
 from workspace.explorer import Explorer
@@ -50,6 +50,7 @@ pub class EditorView:
     pub let status: Text
     pub let palette: CommandPalette
     pub let prompt: TextPrompt
+    pub let dialog: ConfirmDialog
     pub let menu: Toolbar
     pub let body: ContextMenu
 
@@ -74,11 +75,13 @@ pub class EditorView:
         panes.move(output.body, sidebar.body, DockPosition.right)
         let palette = CommandPalette(actions.all, font = font)
         let prompt = TextPrompt(font = font)
+        let dialog = ConfirmDialog(font = font)
         self.palette = palette
         self.prompt = prompt
+        self.dialog = dialog
         self.sidebar = sidebar
         self.dock = panes
         self.output = output
         self.status = status
-        let content = VStack([menu, panes, Toolbar([status], font = font), palette, prompt], spacing = 0.0)
+        let content = VStack([menu, panes, Toolbar([status], font = font), palette, prompt, dialog], spacing = 0.0)
         self.body = ContextMenu(content, [actions.palette, actions.settings, actions.theme, actions.reload, actions.next_pane], font = font)

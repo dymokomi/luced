@@ -67,7 +67,7 @@ pub class Editor:
         let editors = Editors(view.dock, view.output.body, font,
             actions.editing.all + [actions.save, actions.fold, actions.fold_all, actions.unfold_all, actions.ask_ai, actions.write_ai, actions.spellcheck_ai], actions.editing, wrap = settings.word_wrap)
         view.dock.set_fraction(view.sidebar.body, 0.22)
-        let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors)
+        let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors, view.dialog)
         workspace.set_syntax(appearance.syntax)
         let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
         let tools = AiTools(workspace)
@@ -109,6 +109,7 @@ pub class Editor:
         self.connections.append(self.view.prompt.on_submit(self.ai_submit))
         self.connections.append(self.actions.reload.on_trigger(self.configuration.reload))
         self.connections.append(self.actions.exit.on_trigger(self.workspace.request_exit))
+        self.connections.append(self.view.dialog.on_choose(self.workspace.close_choice))
         self.connections.append(self.actions.next_pane.on_trigger(self.next_pane))
         self.connections.append(self.actions.previous_pane.on_trigger(self.previous_pane))
         self.connections.append(self.actions.focus_explorer.on_trigger(self.focus_explorer))

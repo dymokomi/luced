@@ -61,7 +61,7 @@ pub func main(arguments: list[str]) -> int!:
     let runner = instance.runner
     let output = instance.view.output.output
     workspace.frame(0.2)
-    assert(workspace.can_close())
+    assert((try workspace.unsaved_count()) == 0)
     let editor = workspace.current_editor() else error(ui.invalid, "source was not opened")
     app.layout(800.0, 600.0)
     assert(editor.layout().is_focused())

@@ -1,6 +1,6 @@
 ## Application coordination stays in Luce. Native controls expose user intent;
 ## this controller handles workspace navigation, dirty files and command status.
-from ui import Application, Text, TextEditor, ListView, Panel, ContextMenu
+from ui import Application, Text, TextEditor, ListView, Panel, ContextMenu, ConfirmDialog
 from workspace.explorer import Explorer
 from workspace.editors import Editors
 from workspace.document import Document
@@ -21,13 +21,12 @@ pub class Workspace:
     let status: Text
     let runner: Runner
     let editors: Editors
+    let dialog: ConfirmDialog
     var status_text: str = ""
     var message_time: float = 0.0
-    var close_pending: bool = false
-    var discard_confirmed: bool = false
 
     pub func init(self, app: Application, explorer: Explorer, listing: ListView, directory_header: Panel,
-                  status: Text, runner: Runner, editors: Editors):
+                  status: Text, runner: Runner, editors: Editors, dialog: ConfirmDialog):
         self.app = app
         self.explorer = explorer
         self.listing = listing
@@ -35,6 +34,7 @@ pub class Workspace:
         self.status = status
         self.runner = runner
         self.editors = editors
+        self.dialog = dialog
 
     pub func has_document(self) -> bool:
         return self.editors.current_document() != none
@@ -138,7 +138,6 @@ pub class Workspace:
 
     pub func open(self, path: str) -> unit!:
         self.editors.open(path)
-        self.close_pending = false
 
     pub func new_tab(self) -> unit!:
         self.editors.new_untitled()
@@ -168,11 +167,7 @@ pub class Workspace:
             self.runner.stop()
             return
         if name == "discard":
-            if self.close_pending:
-                self.discard_confirmed = true
-                self.app.stop()
-            else:
-                self.report("Close the window first to review unsaved files before discarding.")
+            self.app.stop()
             return
         if name == "save_all":
             for document in self.editors.documents():
@@ -232,24 +227,36 @@ pub class Workspace:
         self.editors.set_wrap_all(enabled)
         self.report("Word wrap " + ("on" if enabled else "off"))
 
-    ## The Exit command and the window close button share one path: close now when
-    ## nothing is unsaved, otherwise can_close raises the save prompt and we wait.
-    pub func request_exit(self) -> unit!:
-        if try self.can_close():
-            self.app.stop()
-
-    pub func can_close(self) -> bool!:
-        if self.discard_confirmed:
-            return true
+    ## How many open documents have unsaved changes, for the close prompt (the Editor
+    ## owns the prompt, since it holds the dialog view).
+    pub func unsaved_count(self) -> int!:
         var count = 0
         for document in self.editors.documents():
             if document.dirty():
                 count += 1
+        return count
+
+    ## The window close button and the Exit command both come here. Close now when
+    ## nothing is unsaved, otherwise raise the save dialog and let close_choice decide.
+    pub func can_close(self) -> bool!:
+        let count = try self.unsaved_count()
         if count == 0:
             return true
-        self.close_pending = true
-        self.report(f"{count} unsaved files. Choose Save all, or Discard & close, then close the window.")
+        let noun = "file" if count == 1 else "files"
+        self.dialog.open(f"{count} unsaved {noun}. Save changes before closing?", "Save All", "Don't Save")
         return false
+
+    ## The dialog's answer: 0 saves everything then closes, 1 discards and closes, 2 stays.
+    pub func close_choice(self, role: int) -> unit!:
+        if role == 0:
+            self.command("save_all")
+            self.app.stop()
+        elif role == 1:
+            self.app.stop()
+
+    pub func request_exit(self) -> unit!:
+        if try self.can_close():
+            self.app.stop()
 
     pub func frame(self, elapsed: float) -> unit!:
         self.tick(elapsed) catch failure:
@@ -258,7 +265,7 @@ pub class Workspace:
     func tick(self, elapsed: float) -> unit!:
         self.runner.poll()
         self.message_time -= elapsed
-        if self.close_pending or self.message_time > 0.0:
+        if self.message_time > 0.0:
             return
         if let document = self.editors.current_document():
             let language = "Luce Base" if document.path.ends_with(".lucb") else ("Luce" if document.path.ends_with(".luc") else ("TOML" if document.path.ends_with(".toml") else "Text"))
