@@ -24,6 +24,7 @@ pub class Document:
         let editor = TextEditor(text, font = font, wrap = wrap)
         self.editor = editor
         self.baseline = editor.text()
+        editor.set_baseline(self.baseline)
         var highlighting: Connection? = none
         var service: Highlighter? = none
         if self.path.ends_with(".luc") or self.path.ends_with(".lucb"):
@@ -64,6 +65,7 @@ pub class Document:
         files.create_text(path, text)
         self.original = text
         self.baseline = self.editor.text()
+        self.editor.set_baseline(self.baseline)
         self.rename(path, syntax)
 
     pub func dirty(self) -> bool!:
@@ -82,3 +84,4 @@ pub class Document:
         files.write_text(self.path, text)
         self.original = text
         self.baseline = self.editor.text()
+        self.editor.set_baseline(self.baseline)

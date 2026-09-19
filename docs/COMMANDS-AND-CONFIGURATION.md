@@ -168,6 +168,11 @@ tinted one stays in family. Keyboard focus uses `active_border` and takes
 precedence. The caret's line-number row is a lift of `gutter`, including while a
 menu is open.
 
+Unsaved edits appear as gutter change bars against the file on disk: green for an
+added line, blue for a modified line, and a red tick where lines were removed. The
+bars track the buffer as you type and clear on save; the tab keeps its `*` dirty
+marker independently.
+
 Pane title bars share their frame's normal, hover and focus color. Inactive tabs
 use `panel`; icons and titles share the configured foreground. Horizontal title
 spacing is configurable in character cells:

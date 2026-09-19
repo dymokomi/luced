@@ -20,6 +20,7 @@ p.add_argument('--prompt', action='store_true', help='capture the new-file promp
 p.add_argument('--hover', choices=['edit-menu', 'divider', 'gutter', 'output'], help='capture hover feedback or top-level menu switching')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
 p.add_argument('--wrap', action='store_true', help='capture with soft word wrap toggled on')
+p.add_argument('--diff', action='store_true', help='capture gutter change bars after editing the file')
 p.add_argument('--tabs', action='store_true', help='open additional source files as tabs')
 p.add_argument('--dock', choices=['menu', 'preview', 'merge', 'left', 'right', 'top', 'bottom'], help='capture dynamic workspace interaction')
 p.add_argument('--output', type=Path, default=ROOT / 'build/preview.ppm')
@@ -145,6 +146,21 @@ pub func main(arguments: list[str]) -> int!:
     if a.wrap:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.z, control = true, alt = true))
+        if captured:""")
+    if a.diff:
+        source = 'from ui import invalid\n' + source
+        source = source.replace('        if captured:', """        if frames == 10:
+            let control = editor.workspace.current_editor() else error(invalid, "preview needs an editor")
+            control.set_selection(0, 0)
+            control.insert("pub let added_by_preview = 1\\n")
+            let middle = control.length() // 2
+            control.set_selection(middle, middle)
+            control.insert("EDITED ")
+            let victim = control.line_start(control.length() // 3)
+            let past = control.line_end(victim) + 1
+            if past <= control.length():
+                control.set_selection(victim, past)
+                control.insert("")
         if captured:""")
     if a.dock:
         source = 'from ui import invalid\n' + source
