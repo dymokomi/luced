@@ -39,6 +39,7 @@ pub class Editor:
     var ai_selection: str = ""
     var ai_query: str = ""
     var ai_turns: int = 0
+    var ai_log: str = ""
     var heartbeat: int = 0
     var beat: float = 0.5
 
@@ -229,31 +230,64 @@ pub class Editor:
             self.show_ai("An AI request is already running.")
             return
         self.ai_waiting = true
-        self.show_ai("Working with " + mode.model + " (" + self.ai_mode + ") …")
+        self.ai_log = mode.model + "  ·  " + self.ai_mode + "\n"
+        try self.ai_note("→ asking the model …")
+        self.view.dock.select(self.view.output.body)
+
+    ## Append one transcript line to the Output pane, live, so each step is visible as it
+    ## happens rather than all at once when the whole exchange finishes.
+    func ai_note(self, line: str) -> unit!:
+        self.ai_log += line + "\n"
+        self.view.output.output.set_text(self.ai_log)
+        try self.view.output.output.set_selection(self.ai_log.length, self.ai_log.length)
 
     ## Parse a finished turn: show the final answer or an error, or execute the tools
     ## the model requested and start the next turn. Runs on the main thread, so a tool
-    ## may read files and edit the focused document.
+    ## may read files and edit the focused document. Each step is logged as it happens.
     func advance(self) -> unit!:
         let code = agent.finish() catch failure:
             self.ai_waiting = false
-            self.show_ai("AI error: " + failure.message)
+            try self.ai_note("✗ error: " + failure.message)
             return
         if code != 1:
             self.ai_waiting = false
-            self.show_ai(agent.reply())
+            try self.ai_note("✓ " + agent.reply())
             return
         self.ai_turns += 1
         for i in try self.tool_order(agent.tool_count()):
-            agent.add_tool_result(try agent.tool_id(i), try self.run_tool(try agent.tool_name(i), i))
+            let name = try agent.tool_name(i)
+            try self.ai_note("• " + try self.tool_summary(name, i))
+            agent.add_tool_result(try agent.tool_id(i), try self.run_tool(name, i))
         if self.ai_turns >= 8:
             self.ai_waiting = false
-            self.show_ai("Stopped after 8 tool rounds.")
+            try self.ai_note("✗ stopped after 8 tool rounds")
             return
         let cfg = self.configuration.ai()
         if not agent.begin(cfg.openrouter.api_key, cfg.mode(self.ai_mode).model):
             self.ai_waiting = false
-            self.show_ai("The AI request could not continue.")
+            try self.ai_note("✗ the request could not continue")
+            return
+        try self.ai_note("→ asking the model …")
+
+    ## A short human description of a tool call, for the live transcript.
+    func tool_summary(self, name: str, index: int) -> str!:
+        if name == "read_document":
+            return "reading the document"
+        if name == "set_document":
+            return "rewriting the document"
+        if name == "replace_lines":
+            return "editing lines " + str(try self.line_arg(index, "first")) + "–" + str(try self.line_arg(index, "last"))
+        if name == "insert_lines":
+            return "inserting after line " + str(try self.line_arg(index, "after"))
+        if name == "delete_lines":
+            return "deleting lines " + str(try self.line_arg(index, "first")) + "–" + str(try self.line_arg(index, "last"))
+        if name == "read_file":
+            return "reading " + (try agent.tool_arg(index, "path"))
+        if name == "list_dir":
+            return "listing " + (try agent.tool_arg(index, "path"))
+        if name == "find_text":
+            return "searching \"" + (try agent.tool_arg(index, "query")) + "\""
+        return name
 
     func run_tool(self, name: str, index: int) -> str!:
         if name == "read_document":
