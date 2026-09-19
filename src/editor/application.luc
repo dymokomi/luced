@@ -40,6 +40,7 @@ pub class Editor:
     var ai_query: str = ""
     var ai_turns: int = 0
     var heartbeat: int = 0
+    var beat: float = 0.5
 
     pub func init(self, options: Options) -> unit!:
         let store = Store(options.config_directory)
@@ -119,10 +120,11 @@ pub class Editor:
         self.connections.append(self.view.sidebar.listing.on_activate(self.workspace.activate))
         self.connections.append(self.view.sidebar.context.on_open(self.view.sidebar.refresh_menu))
         self.connections.append(self.view.output.context.on_open(self.actions.output.update))
-        # A steady heartbeat replaces a per-frame callback: it pumps a running build's
-        # output, counts down the status message, polls settings on disk and picks up a
-        # finished AI reply, while an idle window renders nothing between beats.
-        self.heartbeat = try self.app.every(0.05, self.tick)
+        # The heartbeat pumps a running build's output and polls settings on disk; it
+        # paces itself fast while a command runs and slow when idle, so a quiet window
+        # barely wakes. A finished AI turn is delivered by ai_pump on its wake() instead.
+        self.heartbeat = try self.app.after(self.beat, self.tick)
+        self.connections.append(self.app.on_frame(self.ai_pump))
 
     func update_actions(self):
         self.actions.update(self.workspace, self.runner.busy())
@@ -269,9 +271,15 @@ pub class Editor:
         self.view.dock.select(self.view.output.body)
 
     func tick(self) -> unit!:
-        self.workspace.frame(0.05)
-        self.configuration.poll(0.05)
+        self.workspace.frame(self.beat)
+        self.configuration.poll(self.beat)
         self.update_actions()
+        self.beat = 0.03 if self.runner.busy() else 0.5
+        self.heartbeat = try self.app.after(self.beat, self.tick)
+
+    ## Runs on every loop wake (including a worker's wake() when an AI turn finishes),
+    ## so a reply or the next tool round is delivered at once rather than on a poll.
+    func ai_pump(self, elapsed: float) -> unit!:
         if self.ai_waiting and agent.done():
             self.advance()
 
