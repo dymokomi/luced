@@ -232,8 +232,9 @@ since the reader accepts only bare table names.
 
 **Ask AI** (Cmd/Ctrl+I) prompts for a question and sends it to the `ask` mode's
 model over a native HTTPS connection — no external tools — with the mode's system
-prompt; the reply appears in the Output pane. Requests use OpenRouter (the
-`claude_code` provider is not wired yet), so the `ask` mode needs a model and a
+prompt. The request runs on a background thread, so the editor stays responsive
+while it waits; the reply then appears in the Output pane. Requests use OpenRouter
+(the `claude_code` provider is not wired yet), so the `ask` mode needs a model and a
 credential, or the command reports what to configure.
 
 The application checks for changed contents every half second and validates the
