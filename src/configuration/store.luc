@@ -5,6 +5,7 @@ import workspace.paths as paths
 import configuration.settings as settings
 import configuration.theme as theme
 import config as ai
+import language.default_grammars as default_grammars
 
 pub class Store:
     pub let directory: str
@@ -22,6 +23,7 @@ pub class Store:
         let ai_path = paths.join(absolute, "ai.toml")
         let grammars_dir = paths.join(absolute, "grammars")
         files.ensure_directory(grammars_dir)
+        try default_grammars.seed(grammars_dir)
         create_default(settings_path, settings.defaults())
         create_default(theme_path, theme.defaults())
         create_default(ai_path, ai.defaults())
