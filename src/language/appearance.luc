@@ -40,6 +40,8 @@ pub class SyntaxTheme:
     ## lets any grammar colour against the same six-colour palette; richer selector matching can
     ## come later without changing callers.
     pub func color_for_scope(self, scope: str) -> Color?:
+        if scope.starts_with("comment.section"):
+            return self.section_color
         if scope.starts_with("comment"):
             return self.comment_color
         if scope.starts_with("string") or scope.starts_with("constant.character") or scope.starts_with("punctuation.definition.string"):

@@ -14,8 +14,10 @@
   ],
   "repository": {
     "comment": {
-      "match": "#.*$",
-      "name": "comment.line.number-sign.luce"
+      "patterns": [
+        { "match": "^\\s*#\\s*mark:.*$", "name": "comment.section.luce" },
+        { "match": "#.*$", "name": "comment.line.number-sign.luce" }
+      ]
     },
     "string": {
       "patterns": [

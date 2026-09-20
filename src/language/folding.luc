@@ -1,99 +1,87 @@
-## Structure is derived from lexer output, not raw colon or quote searches.
-## Cached line metadata is shared with highlighting; only edited lines are read
-## again. The linear scope pass visits metadata and never retokenizes the file.
-from ui import FoldRange
-from language.syntax import LineTokens
+## Language-agnostic folding by indentation: a line whose following lines are more indented is a
+## fold header, and its region runs to the last line indented past it. This works for every
+## language the editor highlights — no lexer or grammar-specific structure needed — so folding and
+## highlighting share one path. Offsets count Unicode scalars, exactly as TextEditor does.
+from ui import TextEditor, FoldRange
 
-pub class Line:
-    pub let start: int
-    pub let end: int
-    pub let state: str
-    pub let indent: int
-    pub let significant: bool
-    pub let opens: bool
-    pub let nonempty: bool
-    pub let in_string: bool
+pub class Folder:
+    let editor: TextEditor
+    var version: int
 
-    pub func init(self, start: int, end: int, state: str, indent: int,
-                  significant: bool, opens: bool, nonempty: bool, in_string: bool):
-        self.start = start
-        self.end = end
-        self.state = state
-        self.indent = indent
-        self.significant = significant
-        self.opens = opens
-        self.nonempty = nonempty
-        self.in_string = in_string
+    pub func init(self, editor: TextEditor) -> unit:
+        self.editor = editor
+        self.version = -1
 
-    pub func shifted(self, delta: int) -> Line:
-        return Line(self.start + delta, self.end + delta, self.state, self.indent,
-            self.significant, self.opens, self.nonempty, self.in_string)
+    pub func update(self) -> unit!:
+        let revision = self.editor.version()
+        if revision == self.version:
+            return
+        let length = self.editor.length()
+        let text = try self.editor.text_range(0, length)
+        if self.editor.set_folds(compute_folds(text, length), revision):
+            self.version = revision
 
-pub func analyze(text: str, start: int, end: int, incoming: str, parsed: LineTokens) -> Line:
+## Fold ranges from the indentation structure of `text` (whose scalar length is `length`).
+func compute_folds(text: str, length: int) -> list[FoldRange]:
+    var starts: list[int] = []
+    var indents: list[int] = []
+    var filled: list[bool] = []
+    var offset = 0
+    var line_start = 0
     var indent = 0
     var leading = true
     var nonempty = false
-    var last = ""
-    var offset = 0
-    var token = 0
     for character in text:
-        if leading:
-            if character == " ":
-                indent += 1
-            elif character == "\t":
-                indent += 4 - indent % 4
-            else:
-                leading = false
-        if not (character in [" ", "\t", "\n"]):
-            nonempty = true
-        while token < parsed.tokens.length and parsed.tokens[token].end <= offset:
-            token += 1
-        let masked = token < parsed.tokens.length and parsed.tokens[token].start <= offset and parsed.tokens[token].kind in ["string", "comment"]
-        if not masked and not (character in [" ", "\t", "\n"]):
-            last = character
-        offset += 1
-    return Line(start, end, parsed.state, indent, last != "", last == ":", nonempty, incoming != "")
+        if character == "\n":
+            starts.append(line_start)
+            indents.append(indent)
+            filled.append(nonempty)
+            offset += 1
+            line_start = offset
+            indent = 0
+            leading = true
+            nonempty = false
+        else:
+            if leading:
+                if character == " ":
+                    indent += 1
+                elif character == "\t":
+                    indent += 4 - indent % 4
+                else:
+                    leading = false
+            if character != " " and character != "\t" and character != "\r":
+                nonempty = true
+            offset += 1
+    starts.append(line_start)
+    indents.append(indent)
+    filled.append(nonempty)
 
-pub func ranges(lines: list[Line], length: int) -> list[FoldRange]:
-    var ends: list[int] = []
-    var bodies: list[bool] = []
-    for line in lines:
-        ends.append(0)
-        bodies.append(false)
-    var stack: list[int] = []
-    var depth = 0
-    var string_header = -1
-    for index in 0..<lines.length:
-        let line = lines[index]
-        if line.significant and not line.in_string:
-            while depth > 0 and lines[stack[depth - 1]].indent >= line.indent:
-                depth -= 1
-                let header = stack[depth]
-                if bodies[header]:
-                    ends[header] = line.start
-        if depth > 0 and line.nonempty and line.indent > lines[stack[depth - 1]].indent:
-            bodies[stack[depth - 1]] = true
-        if line.opens and not line.in_string:
-            if depth == stack.length:
-                stack.append(index)
-            else:
-                stack[depth] = index
-            depth += 1
-        if not line.in_string and line.state != "":
-            string_header = index
-        elif line.in_string and line.state == "" and string_header >= 0:
-            ends[string_header] = line.end
-            string_header = -1
-    while depth > 0:
-        depth -= 1
-        let header = stack[depth]
-        if bodies[header]:
-            ends[header] = length
-    if string_header >= 0:
-        ends[string_header] = length
     var folds: list[FoldRange] = []
-    for index in 0..<lines.length:
-        let line = lines[index]
-        if ends[index] > line.end:
-            folds.append(FoldRange(line.start, ends[index]))
+    let count = starts.length
+    var index = 0
+    while index < count:
+        if filled[index]:
+            var scan = index + 1
+            var last = index
+            var deeper = false
+            while scan < count:
+                if not filled[scan]:
+                    scan += 1
+                    continue
+                if indents[scan] > indents[index]:
+                    deeper = true
+                    last = scan
+                    scan += 1
+                else:
+                    break
+            if deeper:
+                var stop = length
+                var after = last + 1
+                while after < count:
+                    if filled[after]:
+                        stop = starts[after]
+                        break
+                    after += 1
+                folds.append(FoldRange(starts[index], stop))
+        index += 1
     return folds
