@@ -1,48 +1,36 @@
 ## A set of TextMate grammars loaded from a directory, indexed by the file extensions they claim.
 ## A missing directory or an unreadable or malformed grammar is skipped, so highlighting simply
 ## falls back rather than failing to open the editor.
-from tm_grammar import Grammar, load
-from tm_json import parse
+from tm import Grammar
 from files import Entries
 import files
 import os
 import workspace.paths as paths
 
 ## A lazily-loaded set of TextMate grammars. Loading and compiling a grammar is costly, so at
-## startup only a small `index.json` manifest (extension -> file, scope -> file) is read; a
-## grammar's file is parsed and its patterns compiled the first time a document of that type is
-## opened, then cached. This keeps launch instant however many grammars are bundled.
+## startup only a small `index.json` manifest (extension -> file) is read; a grammar's file is
+## parsed and its patterns compiled the first time a document of that type is opened, then cached.
+## This keeps launch instant however many grammars are bundled.
 pub class GrammarSet:
     var dir: str
     var ext_to_file: map[str, str]
-    var scope_to_file: map[str, str]
     var cache: map[str, Grammar]
 
     pub func init(self, directory: str) -> unit:
         self.dir = directory
         self.ext_to_file = {}
-        self.scope_to_file = {}
         self.cache = {}
         let text = files.read_text(paths.join(directory, "index.json"), 4000000) catch failure:
             return
-        let doc = parse(text) catch failure:
-            return
-        if let exts = doc.get("extensions"):
-            for ext in exts.keys():
-                if let file = exts.get(ext):
-                    self.ext_to_file[ext] = file.as_str()
-        if let scopes = doc.get("scopes"):
-            for scope in scopes.keys():
-                if let file = scopes.get(scope):
-                    self.scope_to_file[scope] = file.as_str()
+        self.ext_to_file = manifest_pairs(text)
 
     ## Load and cache the grammar in `filename`, or none if it is missing or malformed.
     func load_file(self, filename: str) -> Grammar?:
         if let cached = self.cache[filename]:
             return cached
-        let text = files.read_text(paths.join(self.dir, filename), 4000000) catch failure:
+        let text = files.read_text(paths.join(self.dir, filename), 8000000) catch failure:
             return none
-        let grammar = load(text) catch failure:
+        let grammar = Grammar(text) catch failure:
             return none
         self.cache[filename] = grammar
         return grammar
@@ -54,12 +42,6 @@ pub class GrammarSet:
             return none
         let filename = self.ext_to_file[ext] else return none
         return self.load_file(filename)
-
-    ## The registry the tokenizer uses to resolve embedded-language includes. Empty for now:
-    ## resolving `source.x` lazily without eagerly compiling every grammar needs a lazy resolver
-    ## the tokenizer does not have yet, so embedded sub-languages are left to a later pass.
-    pub func scope_map(self) -> map[str, Grammar]:
-        return {}
 
     pub func count(self) -> int:
         return self.ext_to_file.length
@@ -87,10 +69,56 @@ func copy_grammars(source: str, target: str) -> bool:
         if not name.ends_with(".json"):
             continue
         found = true
-        let text = files.read_text(paths.join(source, name), 4000000) catch failure: continue
+        let text = files.read_text(paths.join(source, name), 8000000) catch failure: continue
         files.create_text(paths.join(target, name), text) catch failure: continue
     snapshot.close()
     return found
+
+## Parse the flat `index.json` manifest (an object of `"key":"value"` string pairs, possibly under
+## `"extensions"`/`"scopes"` sub-objects) into a map. Both extension and scope entries map to a
+## grammar filename; only string values are captured, so the container keys are skipped. A tiny
+## reader avoids pulling a JSON dependency into Luce for a file this simple and fully controlled.
+func manifest_pairs(text: str) -> map[str, str]:
+    var out: map[str, str] = {}
+    let n = text.length
+    var i = 0
+    while i < n:
+        if text[i..<i + 1] != "\"":
+            i += 1
+            continue
+        let key_end = find_quote_end(text, i + 1, n)
+        if key_end < 0:
+            break
+        let key = text[i + 1..<key_end]
+        i = key_end + 1
+        while i < n and is_ws(text[i..<i + 1]):
+            i += 1
+        if i >= n or text[i..<i + 1] != ":":
+            continue
+        i += 1
+        while i < n and is_ws(text[i..<i + 1]):
+            i += 1
+        if i >= n:
+            break
+        if text[i..<i + 1] != "\"":
+            continue
+        let value_end = find_quote_end(text, i + 1, n)
+        if value_end < 0:
+            break
+        out[key] = text[i + 1..<value_end]
+        i = value_end + 1
+    return out
+
+func find_quote_end(text: str, start: int, n: int) -> int:
+    var i = start
+    while i < n:
+        if text[i..<i + 1] == "\"":
+            return i
+        i += 1
+    return -1
+
+func is_ws(c: str) -> bool:
+    return c == " " or c == "\t" or c == "\n" or c == "\r"
 
 ## The extension of a path without its dot ("src/main.rs" -> "rs"), or "" when it has none.
 func extension_of(path: str) -> str:

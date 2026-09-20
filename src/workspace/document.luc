@@ -52,7 +52,7 @@ pub class Document:
             return
         if let registry = grammars:
             if let grammar = registry.grammar_for(self.path):
-                let service = TmHighlighter(self.editor, grammar, registry.scope_map(), syntax)
+                let service = try TmHighlighter(self.editor, grammar, syntax)
                 service.update()
                 self.highlighting = self.editor.on_change(service.update)
                 self.tm = service
