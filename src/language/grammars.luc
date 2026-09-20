@@ -7,10 +7,11 @@ import files
 import os
 import workspace.paths as paths
 
-## A lazily-loaded set of TextMate grammars. Loading and compiling a grammar is costly, so at
-## startup only a small `index.json` manifest (extension -> file) is read; a grammar's file is
-## parsed and its patterns compiled the first time a document of that type is opened, then cached.
-## This keeps launch instant however many grammars are bundled.
+## A lazily-compiled set of TextMate grammars. At startup the directory is scanned and each
+## grammar's `fileTypes` are read (a cheap header scan, not a full parse) to map extension ->
+## file; a grammar's patterns are compiled the first time a document of that type is opened, then
+## cached. Scanning the directory — rather than trusting a written manifest — means a newly
+## bundled or user-added grammar is picked up without a stale index getting in the way.
 pub class GrammarSet:
     var dir: str
     var ext_to_file: map[str, str]
@@ -20,15 +21,27 @@ pub class GrammarSet:
         self.dir = directory
         self.ext_to_file = {}
         self.cache = {}
-        let text = files.read_text(paths.join(directory, "index.json"), 4000000) catch failure:
+        let entries = Entries(directory) catch failure:
             return
-        self.ext_to_file = manifest_pairs(text)
+        var index = 0
+        while index < entries.count():
+            let name = entries.name(index) catch failure:
+                index += 1
+                continue
+            if name.ends_with(".tmLanguage.json"):
+                let text = files.read_text(paths.join(directory, name), 16000000) catch failure:
+                    index += 1
+                    continue
+                for ext in extract_file_types(text):
+                    self.ext_to_file[ext] = name
+            index += 1
+        entries.close()
 
     ## Load and cache the grammar in `filename`, or none if it is missing or malformed.
     func load_file(self, filename: str) -> Grammar?:
         if let cached = self.cache[filename]:
             return cached
-        let text = files.read_text(paths.join(self.dir, filename), 8000000) catch failure:
+        let text = files.read_text(paths.join(self.dir, filename), 16000000) catch failure:
             return none
         let grammar = Grammar(text) catch failure:
             return none
@@ -43,13 +56,32 @@ pub class GrammarSet:
         let filename = self.ext_to_file[ext] else return none
         return self.load_file(filename)
 
+    ## The grammar file bound to `ext` (without a dot), or "" — for the file-type switcher.
+    pub func file_for_extension(self, ext: str) -> str:
+        return self.ext_to_file[ext] else ""
+
+    ## Load the grammar in `filename` directly (used when the user picks a highlighter by hand).
+    pub func grammar_named(self, filename: str) -> Grammar?:
+        return self.load_file(filename)
+
+    ## The grammar filenames the set knows about, sorted, each without its `.tmLanguage.json` tail.
+    pub func languages(self) -> list[str]:
+        var seen: map[str, bool] = {}
+        var names: list[str] = []
+        for ext in self.ext_to_file.keys():
+            let file = self.ext_to_file[ext] else ""
+            if file != "" and not (seen[file] else false):
+                seen[file] = true
+                names.append(file)
+        return names
+
     pub func count(self) -> int:
         return self.ext_to_file.length
 
-## Copy any grammar bundled beside the binary into `config_grammars` (create-only), so a
-## from-source or installed build offers all its grammars without embedding them all. The bundle
-## sits near the executable; a few conventional locations are tried and the first with grammars
-## wins. Existing files in the config directory are kept.
+## Copy each grammar bundled beside the binary into `config_grammars`, overwriting so that fixes
+## and newly added grammars reach an existing config. The bundle sits near the executable; a few
+## conventional locations are tried and the first with grammars wins. A user's own grammar files
+## (names the bundle does not have) are left untouched.
 pub func install_bundled(config_grammars: str) -> unit:
     let exe = os.executable() catch failure:
         return
@@ -69,45 +101,48 @@ func copy_grammars(source: str, target: str) -> bool:
         if not name.ends_with(".json"):
             continue
         found = true
-        let text = files.read_text(paths.join(source, name), 8000000) catch failure: continue
-        files.create_text(paths.join(target, name), text) catch failure: continue
+        let text = files.read_text(paths.join(source, name), 16000000) catch failure: continue
+        files.write_text(paths.join(target, name), text) catch failure: continue
     snapshot.close()
     return found
 
-## Parse the flat `index.json` manifest (an object of `"key":"value"` string pairs, possibly under
-## `"extensions"`/`"scopes"` sub-objects) into a map. Both extension and scope entries map to a
-## grammar filename; only string values are captured, so the container keys are skipped. A tiny
-## reader avoids pulling a JSON dependency into Luce for a file this simple and fully controlled.
-func manifest_pairs(text: str) -> map[str, str]:
-    var out: map[str, str] = {}
+## Extract the string entries of a grammar's top-level `"fileTypes": [ ... ]` array. A tiny scan,
+## so reading the manifest needs no JSON dependency for a shape this simple.
+func extract_file_types(text: str) -> list[str]:
+    var out: list[str] = []
+    let start = find_substring(text, "\"fileTypes\"")
+    if start < 0:
+        return out
     let n = text.length
-    var i = 0
-    while i < n:
-        if text[i..<i + 1] != "\"":
-            i += 1
-            continue
-        let key_end = find_quote_end(text, i + 1, n)
-        if key_end < 0:
-            break
-        let key = text[i + 1..<key_end]
-        i = key_end + 1
-        while i < n and is_ws(text[i..<i + 1]):
-            i += 1
-        if i >= n or text[i..<i + 1] != ":":
-            continue
+    var i = start + 11
+    while i < n and text[i..<i + 1] != "[":
         i += 1
-        while i < n and is_ws(text[i..<i + 1]):
+    i += 1
+    while i < n:
+        let c = text[i..<i + 1]
+        if c == "]":
+            break
+        if c == "\"":
+            let close = find_quote_end(text, i + 1, n)
+            if close < 0:
+                break
+            out.append(text[i + 1..<close])
+            i = close + 1
+        else:
             i += 1
-        if i >= n:
-            break
-        if text[i..<i + 1] != "\"":
-            continue
-        let value_end = find_quote_end(text, i + 1, n)
-        if value_end < 0:
-            break
-        out[key] = text[i + 1..<value_end]
-        i = value_end + 1
     return out
+
+func find_substring(text: str, needle: str) -> int:
+    let n = text.length
+    let m = needle.length
+    if m == 0:
+        return 0
+    var i = 0
+    while i + m <= n:
+        if text[i..<i + m] == needle:
+            return i
+        i += 1
+    return -1
 
 func find_quote_end(text: str, start: int, n: int) -> int:
     var i = start
@@ -116,9 +151,6 @@ func find_quote_end(text: str, start: int, n: int) -> int:
             return i
         i += 1
     return -1
-
-func is_ws(c: str) -> bool:
-    return c == " " or c == "\t" or c == "\n" or c == "\r"
 
 ## The extension of a path without its dot ("src/main.rs" -> "rs"), or "" when it has none.
 func extension_of(path: str) -> str:

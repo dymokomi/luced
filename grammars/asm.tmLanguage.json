@@ -51,6 +51,7 @@
     "register": {
       "patterns": [
         { "match": "%[A-Za-z][A-Za-z0-9]*", "name": "variable.language.register.asm" },
+        { "match": "\\b[qvdshb](?:[12]?[0-9]|3[01])(?:\\.[0-9]+[bhsdq])?\\b", "name": "variable.language.register.asm" },
         { "match": "\\b(?:[xw](?:[12]?[0-9]|3[01])|sp|wsp|lr|pc|fp|ip|xzr|wzr)\\b", "name": "variable.language.register.asm" },
         { "match": "\\b(?:r(?:1[0-5]|[0-9])|[re]?(?:ax|bx|cx|dx|si|di|sp|bp)|[abcd][hl]|sil|dil|spl|bpl|r(?:8|9|1[0-5])[dwb]?)\\b", "name": "variable.language.register.asm" }
       ]
