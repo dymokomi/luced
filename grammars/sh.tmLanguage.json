@@ -1,0 +1,38 @@
+{
+  "name": "Shell",
+  "scopeName": "source.shell",
+  "fileTypes": ["sh", "bash", "zsh", "ksh", "bashrc", "zshrc", "bash_profile", "profile", "zprofile", "zshenv", "ebuild"],
+  "patterns": [
+    { "include": "#shebang" },
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#variable" },
+    { "include": "#keyword" },
+    { "include": "#builtin" },
+    { "include": "#function" },
+    { "include": "#number" }
+  ],
+  "repository": {
+    "shebang": { "match": "\\A#!.*$", "name": "comment.line.shebang.shell" },
+    "comment": { "match": "(?<![$\\w])#.*$", "name": "comment.line.number-sign.shell" },
+    "string": {
+      "patterns": [
+        { "begin": "\"", "end": "\"", "name": "string.quoted.double.shell", "patterns": [{ "match": "\\\\.", "name": "constant.character.escape.shell" }, { "include": "#variable" }] },
+        { "begin": "\\$'", "end": "'", "name": "string.quoted.dollar.shell", "patterns": [{ "match": "\\\\.", "name": "constant.character.escape.shell" }] },
+        { "begin": "'", "end": "'", "name": "string.quoted.single.shell" }
+      ]
+    },
+    "variable": {
+      "patterns": [
+        { "match": "\\$\\{[^}]*\\}", "name": "variable.other.shell" },
+        { "match": "\\$[A-Za-z_][A-Za-z0-9_]*", "name": "variable.other.shell" },
+        { "match": "\\$[0-9@*#?$!_-]", "name": "variable.language.shell" },
+        { "match": "\\b[A-Za-z_][A-Za-z0-9_]*(?==)", "name": "variable.other.assignment.shell" }
+      ]
+    },
+    "keyword": { "match": "(?<![\\w-])(?:if|then|elif|else|fi|for|while|until|do|done|case|esac|in|function|select|time|return|break|continue|declare|local|export|readonly|typeset)(?![\\w-])", "name": "keyword.control.shell" },
+    "builtin": { "match": "(?<![\\w./-])(?:echo|printf|read|cd|pwd|source|alias|unalias|set|unset|shift|eval|exec|trap|exit|test|let|kill|wait|jobs|bg|fg|umask|ulimit|getopts|command|builtin|type|hash|help|history|pushd|popd|dirs|mapfile|readarray)(?![\\w-])", "name": "support.function.builtin.shell" },
+    "function": { "match": "^\\s*(?:function\\s+)?([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\(\\s*\\))", "captures": { "1": { "name": "entity.name.function.shell" } } },
+    "number": { "match": "(?<![\\w.])[0-9]+(?![\\w.])", "name": "constant.numeric.shell" }
+  }
+}
