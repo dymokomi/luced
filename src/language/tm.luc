@@ -8,10 +8,17 @@ from language.appearance import SyntaxTheme
 from tm_grammar import Grammar
 from tm_tokenizer import Tokenizer, State
 from regex import scalars
+import time
 
 ## Very long lines are left uncoloured: matching every pattern across them costs more than the
 ## result is worth, and a minified blob rarely wants highlighting anyway.
 let MAX_LINE = 20000
+
+## A single highlight pass never blocks the editor longer than this. Heavy grammars (large,
+## many-pattern languages) tokenize slowly with the current engine, so a pass that runs over
+## budget stops and leaves the rest of the file plain rather than freezing on open. Lighter
+## grammars finish well within it.
+let BUDGET_NS = 120000000
 
 pub class TmHighlighter:
     let editor: TextEditor
@@ -58,6 +65,7 @@ pub class TmHighlighter:
         let begin = offset
         let length = self.editor.length()
         var spans: list[Highlight] = []
+        let started = time.now()
         while true:
             let end = try self.editor.line_end(offset)
             if end - offset <= MAX_LINE:
@@ -71,6 +79,8 @@ pub class TmHighlighter:
                 break
             new_states.append(state)
             offset = end + 1
+            if time.since(started) > BUDGET_NS:
+                break
         if self.editor.update_highlights(begin, length, spans, revision):
             self.states = new_states
             self.version = revision

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Embed luced/grammars/*.tmLanguage.json into a Luce module that seeds them into the config
-directory on first run, so highlighting works out of the box. Re-run after changing a grammar."""
+"""Embed our small grammars into a Luce module (a fallback baseline seeded on first run) and
+write index.json (extension/scope -> grammar file) so the editor can load grammars lazily.
+Re-run after adding or changing a grammar."""
+import json
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -56,7 +58,20 @@ def main():
     if not files:
         lines.append("    return")
     OUT.write_text("\n".join(lines) + "\n")
-    print("wrote %s (%d grammars)" % (OUT, len(files)))
+    print("wrote %s (%d embedded grammars)" % (OUT, len(files)))
+
+    # The manifest: which grammar file serves each extension and each scope, so the editor loads
+    # and compiles a grammar only when a file of that type is opened.
+    index = {"extensions": {}, "scopes": {}}
+    for path in sorted(GRAMMARS.glob("*.tmLanguage.json")):
+        data = json.loads(path.read_text())
+        scope = data.get("scopeName", "")
+        if scope:
+            index["scopes"][scope] = path.name
+        for ext in data.get("fileTypes", []):
+            index["extensions"][ext] = path.name
+    (GRAMMARS / "index.json").write_text(json.dumps(index, separators=(",", ":")) + "\n")
+    print("wrote index.json (%d extensions, %d scopes)" % (len(index["extensions"]), len(index["scopes"])))
 
 
 if __name__ == "__main__":

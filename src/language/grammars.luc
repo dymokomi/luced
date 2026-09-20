@@ -2,45 +2,67 @@
 ## A missing directory or an unreadable or malformed grammar is skipped, so highlighting simply
 ## falls back rather than failing to open the editor.
 from tm_grammar import Grammar, load
+from tm_json import parse
 from files import Entries
 import files
 import os
 import workspace.paths as paths
 
+## A lazily-loaded set of TextMate grammars. Loading and compiling a grammar is costly, so at
+## startup only a small `index.json` manifest (extension -> file, scope -> file) is read; a
+## grammar's file is parsed and its patterns compiled the first time a document of that type is
+## opened, then cached. This keeps launch instant however many grammars are bundled.
 pub class GrammarSet:
-    var by_ext: map[str, Grammar]
-    var by_scope: map[str, Grammar]
+    var dir: str
+    var ext_to_file: map[str, str]
+    var scope_to_file: map[str, str]
+    var cache: map[str, Grammar]
 
     pub func init(self, directory: str) -> unit:
-        self.by_ext = {}
-        self.by_scope = {}
-        let snapshot = Entries(directory) catch failure:
+        self.dir = directory
+        self.ext_to_file = {}
+        self.scope_to_file = {}
+        self.cache = {}
+        let text = files.read_text(paths.join(directory, "index.json"), 4000000) catch failure:
             return
-        for index in 0..<snapshot.count():
-            let name = snapshot.name(index) catch failure: continue
-            if not name.ends_with(".json"):
-                continue
-            let text = files.read_text(paths.join(directory, name), 4000000) catch failure: continue
-            let grammar = load(text) catch failure: continue
-            if grammar.scope_name != "":
-                self.by_scope[grammar.scope_name] = grammar
-            for ext in grammar.file_types:
-                self.by_ext[ext] = grammar
-        snapshot.close()
+        let doc = parse(text) catch failure:
+            return
+        if let exts = doc.get("extensions"):
+            for ext in exts.keys():
+                if let file = exts.get(ext):
+                    self.ext_to_file[ext] = file.as_str()
+        if let scopes = doc.get("scopes"):
+            for scope in scopes.keys():
+                if let file = scopes.get(scope):
+                    self.scope_to_file[scope] = file.as_str()
 
-    ## The grammar registered for a file path's extension, or none.
+    ## Load and cache the grammar in `filename`, or none if it is missing or malformed.
+    func load_file(self, filename: str) -> Grammar?:
+        if let cached = self.cache[filename]:
+            return cached
+        let text = files.read_text(paths.join(self.dir, filename), 4000000) catch failure:
+            return none
+        let grammar = load(text) catch failure:
+            return none
+        self.cache[filename] = grammar
+        return grammar
+
+    ## The grammar for a file path's extension (compiled on first use), or none.
     pub func grammar_for(self, path: str) -> Grammar?:
         let ext = extension_of(path)
         if ext == "":
             return none
-        return self.by_ext[ext]
+        let filename = self.ext_to_file[ext] else return none
+        return self.load_file(filename)
 
-    ## Every loaded grammar keyed by scope name, for resolving embedded-language includes.
+    ## The registry the tokenizer uses to resolve embedded-language includes. Empty for now:
+    ## resolving `source.x` lazily without eagerly compiling every grammar needs a lazy resolver
+    ## the tokenizer does not have yet, so embedded sub-languages are left to a later pass.
     pub func scope_map(self) -> map[str, Grammar]:
-        return self.by_scope
+        return {}
 
     pub func count(self) -> int:
-        return self.by_ext.length
+        return self.ext_to_file.length
 
 ## Copy any grammar bundled beside the binary into `config_grammars` (create-only), so a
 ## from-source or installed build offers all its grammars without embedding them all. The bundle

@@ -42,18 +42,20 @@ pub class Document:
         self.tm = none
         if self.path == "":
             return
+        # Luce and Luce Base use the built-in single-pass lexer: it is far faster than running a
+        # TextMate grammar and is what the editor opens most, so it stays the default for them.
+        if self.path.ends_with(".luc") or self.path.ends_with(".lucb"):
+            let service = Highlighter(self.editor, syntax)
+            service.update()
+            self.highlighting = self.editor.on_change(service.update)
+            self.highlighter = service
+            return
         if let registry = grammars:
             if let grammar = registry.grammar_for(self.path):
                 let service = TmHighlighter(self.editor, grammar, registry.scope_map(), syntax)
                 service.update()
                 self.highlighting = self.editor.on_change(service.update)
                 self.tm = service
-                return
-        if self.path.ends_with(".luc") or self.path.ends_with(".lucb"):
-            let service = Highlighter(self.editor, syntax)
-            service.update()
-            self.highlighting = self.editor.on_change(service.update)
-            self.highlighter = service
 
     pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
         if let highlighter = self.highlighter:
