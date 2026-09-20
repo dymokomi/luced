@@ -19,18 +19,26 @@ func run_editor(options: Options) -> unit!:
     with Editor(options) as editor:
         editor.run()
 
-## Print the failure and save it to <config>/crash.log so a window that closes on an
-## error leaves a trace, instead of vanishing with nothing to look at.
+## Print the failure and save it to <config>/crash.log — with the recent breadcrumb trail from
+## luced.log folded in — so a window that closes on an error leaves a trace instead of vanishing.
+## (An uncatchable trap never reaches here; for those the flushed luced.log is the only record,
+## which is why the journal writes each breadcrumb to disk as it happens.)
 func report_crash(options: Options, message: str) -> unit:
-    let report = "luced closed unexpectedly:\n\n" + message + "\n"
-    print(report)
-    save_crash(options, report) catch failure:
+    save_crash(options, message) catch failure:
+        print("luced closed unexpectedly:\n\n" + message)
         print("could not write the crash log: " + failure.message)
 
-func save_crash(options: Options, report: str) -> unit!:
+func save_crash(options: Options, message: str) -> unit!:
     var directory = options.config_directory
     if directory == "":
         directory = paths.join(try files.home_directory(), ".luced")
     try files.ensure_directory(directory)
-    try files.write_text(paths.join(directory, "crash.log"), report)
-    print("saved a crash report to " + paths.join(directory, "crash.log"))
+    let log_path = paths.join(directory, "luced.log")
+    let trail = files.read_text(log_path, 200000) catch failure: recover ""
+    let report = "luced closed unexpectedly:\n\n" + message + "\n\nRecent activity (also in luced.log):\n" + trail + "\n"
+    print(report)
+    let crash_path = paths.join(directory, "crash.log")
+    try files.write_text(crash_path, report)
+    # Record the crash in the running log too, so the two files agree.
+    try files.write_text(log_path, trail + "[crash] " + message + "\n")
+    print("saved a crash report to " + crash_path)

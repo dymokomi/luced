@@ -4,6 +4,7 @@ from ui import Application, Font, Shortcut, Command
 from interop import Connection
 from editor.options import Options
 from editor.actions import EditorActions
+from editor.journal import Journal
 from editor.views import EditorView
 from editor.configuration import Configuration
 from configuration.store import Store
@@ -62,6 +63,9 @@ pub class Editor:
         let is_file = files.path_kind(absolute) == files.FileKind.regular
         let explorer = Explorer(paths.parent(absolute) if is_file else absolute)
         let actions = EditorActions()
+        let journal = Journal(store.directory)
+        actions.files.set_journal(journal)
+        journal.record(("open file " if is_file else "open folder ") + absolute)
         let view = EditorView(explorer, actions, font)
         let app = Application(view.body, title = "luced", width = settings.width, height = settings.height, theme = appearance.theme)
         let runner = Runner(view.output.output, options.luce if options.luce_override else settings.luce,

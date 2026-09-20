@@ -1,0 +1,60 @@
+## A small crash-diagnostic journal. It keeps the most recent breadcrumbs in memory and rewrites
+## `<config>/luced.log` after each one, so if luced stops — including on an uncatchable trap, where
+## no error handler runs — the log still holds what was happening just before. It is deliberately
+## coarse (one line per user-visible action, not per frame), so the last few lines localise a crash.
+import files
+import time
+import workspace.paths as paths
+
+## Keep this many breadcrumbs; enough to span the actions leading to a crash without the log growing.
+let CAPACITY = 400
+
+pub class Journal:
+    var path: str
+    var lines: list[str]
+    var sequence: int
+    var enabled: bool
+
+    pub func init(self, config_directory: str) -> unit:
+        self.path = ""
+        self.lines = []
+        self.sequence = 0
+        self.enabled = config_directory != ""
+        if self.enabled:
+            self.path = paths.join(config_directory, "luced.log")
+            self.record("session start")
+
+    ## Record one breadcrumb and flush it to disk immediately (so a trap cannot lose it).
+    pub func record(self, message: str) -> unit:
+        if not self.enabled:
+            return
+        self.sequence += 1
+        self.lines.append("[" + clock(time.unix()) + " #" + str(self.sequence) + "] " + message)
+        if self.lines.length > CAPACITY:
+            self.trim()
+        self.flush()
+
+    func trim(self) -> unit:
+        var kept: list[str] = []
+        var i = self.lines.length - CAPACITY
+        while i < self.lines.length:
+            kept.append(self.lines[i])
+            i += 1
+        self.lines = kept
+
+    func flush(self) -> unit:
+        var text = ""
+        for line in self.lines:
+            text += line + "\n"
+        # If the log directory is unwritable, disable rather than raising on every action.
+        files.write_text(self.path, text) catch failure:
+            self.enabled = false
+
+## A UTC HH:MM:SS stamp from a Unix time — readable for correlating with "when I did X", without a
+## calendar library. The absolute date is not shown; the sequence number keeps events ordered.
+func clock(unix: int) -> str:
+    let day = ((unix % 86400) + 86400) % 86400
+    return pad2(day // 3600) + ":" + pad2((day % 3600) // 60) + ":" + pad2(day % 60)
+
+func pad2(value: int) -> str:
+    return ("0" + str(value)) if value < 10 else str(value)

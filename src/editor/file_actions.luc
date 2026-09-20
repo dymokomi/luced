@@ -5,6 +5,7 @@
 from ui import Command, TextPrompt
 from interop import Connection
 from workspace.controller import Workspace
+from editor.journal import Journal
 import clipboard
 import workspace.paths as paths
 
@@ -28,6 +29,7 @@ pub class FileActions:
     var clip_path: str = ""
     var clip_move: bool = false
     var hidden_label: bool = false
+    var journal: Journal? = none
 
     pub func init(self) -> unit!:
         let new_file = Command("New File…", id = "new_file")
@@ -53,6 +55,15 @@ pub class FileActions:
         self.separator = Command("", divider = true)
         self.all = [new_file, new_folder, cut, copy, paste, copy_path, rename, delete, refresh, show_hidden]
 
+    ## Give the file actions the session journal, so the right-click menu and each file operation
+    ## leave a breadcrumb before handing off to the UI or the filesystem.
+    pub func set_journal(self, journal: Journal) -> unit:
+        self.journal = journal
+
+    func record(self, message: str) -> unit:
+        if let journal = self.journal:
+            journal.record(message)
+
     pub func connect(self, workspace: Workspace, prompt: TextPrompt) -> list[Connection]!:
         self.workspace = workspace
         self.prompt = prompt
@@ -76,10 +87,14 @@ pub class FileActions:
     ## Refresh enabled states, then choose the menu for what was clicked: a file,
     ## a folder, or empty space (also the parent row, which selects nothing).
     pub func menu_for_selection(self) -> list[Command]:
-        let workspace = self.workspace else return self.background_menu()
-        self.update()
-        if let entry = workspace.selected_entry():
-            return self.folder_menu() if entry.directory else self.file_menu()
+        if let workspace = self.workspace:
+            self.update()
+            if let entry = workspace.selected_entry():
+                self.record("file pane menu: " + ("folder " if entry.directory else "file ") + entry.path)
+                return self.folder_menu() if entry.directory else self.file_menu()
+            self.record("file pane menu: background")
+            return self.background_menu()
+        self.record("file pane menu: no workspace")
         return self.background_menu()
 
     pub func update(self):
@@ -110,6 +125,7 @@ pub class FileActions:
     func create(self, operation: str) -> unit!:
         let workspace = self.workspace else return
         let prompt = self.prompt else return
+        self.record("create " + operation)
         self.operation = operation
         self.target = workspace.directory()
         if let entry = workspace.selected_entry():
@@ -120,6 +136,7 @@ pub class FileActions:
     func cut_entry(self) -> unit!:
         let workspace = self.workspace else return
         let entry = workspace.selected_entry() else return
+        self.record("cut " + entry.path)
         self.clip_path = entry.path
         self.clip_move = true
         workspace.report("Cut " + entry.name)
@@ -127,6 +144,7 @@ pub class FileActions:
     func copy_entry(self) -> unit!:
         let workspace = self.workspace else return
         let entry = workspace.selected_entry() else return
+        self.record("copy " + entry.path)
         self.clip_path = entry.path
         self.clip_move = false
         workspace.report("Copied " + entry.name)
@@ -135,6 +153,7 @@ pub class FileActions:
         let workspace = self.workspace else return
         if self.clip_path == "":
             return
+        self.record("paste " + self.clip_path)
         var target = workspace.directory()
         if let entry = workspace.selected_entry():
             if entry.directory:
@@ -163,6 +182,7 @@ pub class FileActions:
         let workspace = self.workspace else return
         let prompt = self.prompt else return
         let entry = workspace.selected_entry() else return
+        self.record("rename " + entry.path)
         self.operation = "rename"
         self.target = entry.path
         prompt.open("Rename " + paths.short(entry.name, 45), entry.name, accept = "Rename")
@@ -171,6 +191,7 @@ pub class FileActions:
         let workspace = self.workspace else return
         let prompt = self.prompt else return
         let entry = workspace.selected_entry() else return
+        self.record("delete " + entry.path)
         self.operation = "delete"
         self.target = entry.path
         prompt.open("Delete " + paths.short(entry.name, 40) + (" and its contents?" if entry.directory else "?"), accept = "Delete", editable = false)
