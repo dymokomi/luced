@@ -64,7 +64,9 @@ pub func tokenize(source: str, incoming: str = "") -> LineTokens:
         elif character == "#":
             while index < characters.length and characters[index] != "\n":
                 index += 1
-            spans.append(Token(start, index, "comment"))
+            # `# mark:` section headers (the fold-region markers in the house style) get their own
+            # kind so the theme can show them brighter than an ordinary comment.
+            spans.append(Token(start, index, "section" if is_mark(characters, start, index) else "comment"))
         elif digit(character):
             index += 1
             while index < characters.length:
@@ -103,3 +105,18 @@ func digit(character: str) -> bool:
 
 func identifier(character: str) -> bool:
     return (character >= "a" and character <= "z") or (character >= "A" and character <= "Z") or character == "_" or character > "~"
+
+## Whether the comment in `characters[start..<end)` is a `# mark:` section header — `#`, optional
+## spaces, then `mark:`.
+func is_mark(characters: list[str], start: int, end: int) -> bool:
+    var i = start + 1
+    while i < end and (characters[i] == " " or characters[i] == "\t"):
+        i += 1
+    let word = "mark:"
+    var w = 0
+    while w < word.length:
+        if i >= end or characters[i] != word[w..<w + 1]:
+            return false
+        i += 1
+        w += 1
+    return true

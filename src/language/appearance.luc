@@ -8,6 +8,8 @@ pub class SyntaxTheme:
     pub let number_color: Color
     pub let type_color: Color
     pub let other_color: Color
+    ## `# mark:` section headers — a comment, but shown brighter so the fold regions stand out.
+    pub let section_color: Color
 
     pub func init(self, colors: map[str, Color]):
         self.keyword_color = colors["keyword"] else Color(0.55, 0.26, 0.65)
@@ -16,6 +18,7 @@ pub class SyntaxTheme:
         self.number_color = colors["number"] else Color(0.72, 0.43, 0.19)
         self.type_color = colors["type"] else Color(0.12, 0.54, 0.65)
         self.other_color = colors["other"] else Color(0.57, 0.64, 0.36)
+        self.section_color = colors["section"] else Color(0.663, 0.812, 0.788)
 
     pub func color(self, kind: str) -> Color:
         if kind == "keyword":
@@ -24,6 +27,8 @@ pub class SyntaxTheme:
             return self.string_color
         if kind == "comment":
             return self.comment_color
+        if kind == "section":
+            return self.section_color
         if kind == "number":
             return self.number_color
         if kind == "type":
