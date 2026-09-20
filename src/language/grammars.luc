@@ -4,6 +4,7 @@
 from tm_grammar import Grammar, load
 from files import Entries
 import files
+import os
 import workspace.paths as paths
 
 pub class GrammarSet:
@@ -32,6 +33,34 @@ pub class GrammarSet:
 
     pub func count(self) -> int:
         return self.by_ext.length
+
+## Copy any grammar bundled beside the binary into `config_grammars` (create-only), so a
+## from-source or installed build offers all its grammars without embedding them all. The bundle
+## sits near the executable; a few conventional locations are tried and the first with grammars
+## wins. Existing files in the config directory are kept.
+pub func install_bundled(config_grammars: str) -> unit:
+    let exe = os.executable() catch failure:
+        return
+    let exe_dir = paths.parent(exe)
+    let parent = paths.parent(exe_dir)
+    let candidates = [paths.join(exe_dir, "grammars"), paths.join(parent, "grammars"), paths.join(parent, "share/luced/grammars")]
+    for candidate in candidates:
+        if copy_grammars(candidate, config_grammars):
+            return
+
+func copy_grammars(source: str, target: str) -> bool:
+    let snapshot = Entries(source) catch failure:
+        return false
+    var found = false
+    for index in 0..<snapshot.count():
+        let name = snapshot.name(index) catch failure: continue
+        if not name.ends_with(".json"):
+            continue
+        found = true
+        let text = files.read_text(paths.join(source, name), 4000000) catch failure: continue
+        files.create_text(paths.join(target, name), text) catch failure: continue
+    snapshot.close()
+    return found
 
 ## The extension of a path without its dot ("src/main.rs" -> "rs"), or "" when it has none.
 func extension_of(path: str) -> str:
