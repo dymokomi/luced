@@ -41,6 +41,28 @@ pub class SyntaxTheme:
             return self.string_color
         if scope.starts_with("constant.numeric"):
             return self.number_color
+        # Prose markup (Markdown): headings and emphasis stand out; code is string-coloured, list
+        # bullets numeric, block quotes muted, links typed. Placed before the generic entity/keyword
+        # rules so heading text (entity.name.section) reads as a heading rather than a type.
+        if scope.starts_with("markup.heading") or scope.starts_with("entity.name.section") or scope.starts_with("punctuation.definition.heading"):
+            return self.keyword_color
+        if scope.starts_with("markup.bold"):
+            return self.keyword_color
+        if scope.starts_with("markup.italic"):
+            return self.type_color
+        if scope.starts_with("markup.raw") or scope.starts_with("markup.inline") or scope.starts_with("markup.fenced_code"):
+            return self.string_color
+        if scope.starts_with("markup.quote"):
+            return self.comment_color
+        if scope.starts_with("markup.list") or scope.starts_with("punctuation.definition.list"):
+            return self.number_color
+        if scope.starts_with("markup.underline") or scope.starts_with("markup.link") or scope.starts_with("constant.other.reference.link"):
+            return self.type_color
+        if scope.starts_with("markup"):
+            return self.other_color
+        # Assembly directives (.text, .globl, …) read as structure, distinct from mnemonics.
+        if scope.starts_with("keyword.control.directive"):
+            return self.type_color
         if scope.starts_with("constant.language") or scope.starts_with("keyword") or scope.starts_with("storage"):
             return self.keyword_color
         if scope.starts_with("constant"):
