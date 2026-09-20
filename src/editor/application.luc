@@ -12,6 +12,7 @@ from configuration.theme import Appearance
 from workspace.controller import Workspace
 from workspace.explorer import Explorer
 from workspace.editors import Editors
+from language.grammars import GrammarSet
 from commands.runner import Runner
 from editor.ai_tools import AiTools
 import ai_agent as agent
@@ -71,6 +72,7 @@ pub class Editor:
         view.dock.set_fraction(view.sidebar.body, 0.22)
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors, view.dialog)
         workspace.set_syntax(appearance.syntax)
+        workspace.set_grammars(GrammarSet(store.grammars_dir))
         let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
         let tools = AiTools(workspace)
         self.app = app

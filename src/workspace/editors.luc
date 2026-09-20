@@ -6,6 +6,7 @@ from editor.panel import EditorPanel
 from editor.text_actions import TextActions
 from workspace.document import Document
 from language.appearance import SyntaxTheme
+from language.grammars import GrammarSet
 import files
 import ui
 import workspace.paths as paths
@@ -21,6 +22,7 @@ pub class Editors:
     var active: EditorPanel? = none
     var last_focused: Panel? = none
     var syntax: SyntaxTheme? = none
+    var grammars: GrammarSet? = none
     var wrap: bool = false
 
     pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Command], editing: TextActions, wrap: bool = false) -> unit!:
@@ -83,6 +85,10 @@ pub class Editors:
         self.syntax = theme
         for document in self.documents(): document.set_syntax(theme)
 
+    ## Grammars are loaded once at startup, before any file opens; store them for new documents.
+    pub func set_grammars(self, grammars: GrammarSet) -> unit!:
+        self.grammars = grammars
+
     pub func open(self, path: str) -> unit!:
         let identity = files.absolute_path(path)
         for tab in self.tabs:
@@ -90,11 +96,11 @@ pub class Editors:
                 if document.path == identity:
                     self.dock.select(tab.body)
                     return
-        self.place(Document(identity, self.font, self.syntax, wrap = self.wrap))
+        self.place(Document(identity, self.font, self.syntax, self.grammars, wrap = self.wrap))
 
     ## Open a fresh untitled buffer in a tab, ready to type into and Save As later.
     pub func new_untitled(self) -> unit!:
-        self.place(Document("", self.font, self.syntax, blank = true, wrap = self.wrap))
+        self.place(Document("", self.font, self.syntax, self.grammars, blank = true, wrap = self.wrap))
 
     pub func wrapping(self) -> bool:
         return self.wrap
@@ -174,7 +180,7 @@ pub class Editors:
 
     pub func save_untitled(self, path: str) -> unit!:
         let document = self.current_document() else return
-        document.save_as(path, self.syntax)
+        document.save_as(path, self.syntax, self.grammars)
 
     pub func changed(self) -> unit!:
         for tab in self.tabs: tab.update()
@@ -182,7 +188,7 @@ pub class Editors:
     pub func rename(self, source: str, destination: str) -> unit!:
         for document in self.documents():
             if document.path == source or document.path.starts_with(source + "/"):
-                document.rename(destination + document.path[source.length..], self.syntax)
+                document.rename(destination + document.path[source.length..], self.syntax, self.grammars)
         self.changed()
 
     pub func close(self):

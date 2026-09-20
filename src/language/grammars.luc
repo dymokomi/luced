@@ -1,0 +1,42 @@
+## A set of TextMate grammars loaded from a directory, indexed by the file extensions they claim.
+## A missing directory or an unreadable or malformed grammar is skipped, so highlighting simply
+## falls back rather than failing to open the editor.
+from tm_grammar import Grammar, load
+from files import Entries
+import files
+import workspace.paths as paths
+
+pub class GrammarSet:
+    var by_ext: map[str, Grammar]
+
+    pub func init(self, directory: str) -> unit:
+        self.by_ext = {}
+        let snapshot = Entries(directory) catch failure:
+            return
+        for index in 0..<snapshot.count():
+            let name = snapshot.name(index) catch failure: continue
+            if not name.ends_with(".json"):
+                continue
+            let text = files.read_text(paths.join(directory, name), 4000000) catch failure: continue
+            let grammar = load(text) catch failure: continue
+            for ext in grammar.file_types:
+                self.by_ext[ext] = grammar
+        snapshot.close()
+
+    ## The grammar registered for a file path's extension, or none.
+    pub func grammar_for(self, path: str) -> Grammar?:
+        let ext = extension_of(path)
+        if ext == "":
+            return none
+        return self.by_ext[ext]
+
+    pub func count(self) -> int:
+        return self.by_ext.length
+
+## The extension of a path without its dot ("src/main.rs" -> "rs"), or "" when it has none.
+func extension_of(path: str) -> str:
+    let base = path.replace("\\", "/").split("/").last else path
+    let parts = base.split(".")
+    if parts.length < 2:
+        return ""
+    return parts.last else ""

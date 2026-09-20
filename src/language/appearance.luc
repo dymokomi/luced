@@ -29,3 +29,26 @@ pub class SyntaxTheme:
         if kind == "type":
             return self.type_color
         return self.other_color
+
+    ## A TextMate scope resolves to one of the theme's colours by its leading segments, or to
+    ## none — leave the text at the editor's foreground — for base or structural scopes. This
+    ## lets any grammar colour against the same six-colour palette; richer selector matching can
+    ## come later without changing callers.
+    pub func color_for_scope(self, scope: str) -> Color?:
+        if scope.starts_with("comment"):
+            return self.comment_color
+        if scope.starts_with("string") or scope.starts_with("constant.character") or scope.starts_with("punctuation.definition.string"):
+            return self.string_color
+        if scope.starts_with("constant.numeric"):
+            return self.number_color
+        if scope.starts_with("constant.language") or scope.starts_with("keyword") or scope.starts_with("storage"):
+            return self.keyword_color
+        if scope.starts_with("constant"):
+            return self.number_color
+        if scope.starts_with("entity.name.type") or scope.starts_with("entity.name.class") or scope.starts_with("support.type") or scope.starts_with("support.class") or scope.starts_with("entity.other.inherited-class"):
+            return self.type_color
+        if scope.starts_with("entity.name.function") or scope.starts_with("support.function") or scope.starts_with("variable") or scope.starts_with("entity.name.tag"):
+            return self.other_color
+        if scope.starts_with("entity"):
+            return self.type_color
+        return none

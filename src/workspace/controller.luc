@@ -6,6 +6,7 @@ from workspace.editors import Editors
 from workspace.document import Document
 from commands.runner import Runner
 from language.appearance import SyntaxTheme
+from language.grammars import GrammarSet
 from workspace.explorer import Entry
 import workspace.operations as operations
 import workspace.paths as paths
@@ -53,6 +54,9 @@ pub class Workspace:
 
     pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
         self.editors.set_syntax(theme)
+
+    pub func set_grammars(self, grammars: GrammarSet) -> unit!:
+        self.editors.set_grammars(grammars)
 
     pub func focus_editor(self) -> unit!:
         self.editors.focus()

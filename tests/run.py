@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory(prefix='luced-tests-') as temp:
     shutil.copy2(ROOT / 'tests/main.luc', project / 'src/main.luc')
     shutil.copy2(ROOT / 'tests/configuration.luc', project / 'src/configuration_tests.luc')
     shutil.copy2(ROOT / 'tests/workspace_tabs.luc', project / 'src/workspace_tab_tests.luc')
-    (project / 'luce.toml').write_text('[package]\nname = "luced_tests"\nsource = "src"\n[dependencies]\nluce_ui = ' + json.dumps(str(ROOT.parent / 'luce-ui')) + '\nluce_config = ' + json.dumps(str(ROOT.parent / 'luce-config')) + '\nluce_ai = ' + json.dumps(str(ROOT.parent / 'luce-ai')) + '\n')
+    (project / 'luce.toml').write_text('[package]\nname = "luced_tests"\nsource = "src"\n[dependencies]\nluce_ui = ' + json.dumps(str(ROOT.parent / 'luce-ui')) + '\nluce_config = ' + json.dumps(str(ROOT.parent / 'luce-config')) + '\nluce_ai = ' + json.dumps(str(ROOT.parent / 'luce-ai')) + '\nluce_textmate = ' + json.dumps(str(ROOT.parent / 'luce-textmate')) + '\nluce_regex = ' + json.dumps(str(ROOT.parent / 'luce-regex')) + '\n')
     (root / 'luce.toml').write_text('[package]\nname = "luced_fixture"\nsource = "."\n')
     binary = root / ('tests.exe' if os.name == 'nt' else 'tests')
     for flags in [['--native', '--opt', '0'], ['--native', '--opt', '2']]:

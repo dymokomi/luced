@@ -1,0 +1,71 @@
+## Incremental highlighting driven by a TextMate grammar. It re-tokenizes from the first changed
+## line to the end of the file, carrying the tokenizer's rule state line to line and colouring
+## each scoped span through the theme. Lines before the change keep their cached incoming state,
+## so a local edit rescans only the suffix. Folding for grammar languages is left to a later
+## pass; this module publishes highlights only.
+from ui import TextEditor, Highlight
+from language.appearance import SyntaxTheme
+from tm_grammar import Grammar
+from tm_tokenizer import Tokenizer, State
+from regex import scalars
+
+pub class TmHighlighter:
+    let editor: TextEditor
+    let tok: Tokenizer
+    var theme: SyntaxTheme
+    var states: list[State]
+    var version: int
+
+    pub func init(self, editor: TextEditor, grammar: Grammar, theme: SyntaxTheme? = none):
+        self.editor = editor
+        self.tok = Tokenizer(grammar)
+        self.theme = theme else SyntaxTheme({})
+        self.states = []
+        self.version = -1
+
+    pub func set_theme(self, theme: SyntaxTheme) -> unit!:
+        self.theme = theme
+        self.version = -1
+        self.update()
+
+    pub func update(self) -> unit!:
+        let revision = self.editor.version()
+        if revision == self.version:
+            return
+        let change = self.editor.change()
+        let incremental = self.version >= 0 and change.version == self.version + 1
+        var start_line = 0
+        if incremental:
+            let where = try self.editor.line_number(try self.editor.line_start(change.start))
+            if where >= 0 and where < self.states.length:
+                start_line = where
+        var new_states: list[State] = []
+        var i = 0
+        while i < start_line:
+            new_states.append(self.states[i])
+            i += 1
+        var state = self.tok.start_state()
+        if start_line > 0:
+            state = self.states[start_line]
+        new_states.append(state)
+        var offset = 0
+        if start_line > 0:
+            offset = try self.editor.line_start(change.start)
+        let begin = offset
+        let length = self.editor.length()
+        var spans: list[Highlight] = []
+        while true:
+            let end = try self.editor.line_end(offset)
+            let text = try self.editor.text_range(offset, end)
+            let outcome = self.tok.run(scalars(text), state)
+            for span in outcome.spans:
+                if let color = self.theme.color_for_scope(span.scope):
+                    spans.append(Highlight(offset + span.start, offset + span.end, color))
+            state = outcome.state
+            if end >= length:
+                break
+            new_states.append(state)
+            offset = end + 1
+        if self.editor.update_highlights(begin, length, spans, revision):
+            self.states = new_states
+            self.version = revision

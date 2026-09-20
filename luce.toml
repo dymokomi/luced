@@ -6,4 +6,6 @@ source = "src"
 luce_ui = "../luce-ui"
 luce_config = "../luce-config"
 luce_ai = "../luce-ai"
+luce_textmate = "../luce-textmate"
+luce_regex = "../luce-regex"
 
