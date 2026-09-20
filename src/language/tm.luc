@@ -9,6 +9,10 @@ from tm_grammar import Grammar
 from tm_tokenizer import Tokenizer, State
 from regex import scalars
 
+## Very long lines are left uncoloured: matching every pattern across them costs more than the
+## result is worth, and a minified blob rarely wants highlighting anyway.
+let MAX_LINE = 20000
+
 pub class TmHighlighter:
     let editor: TextEditor
     let tok: Tokenizer
@@ -16,9 +20,9 @@ pub class TmHighlighter:
     var states: list[State]
     var version: int
 
-    pub func init(self, editor: TextEditor, grammar: Grammar, theme: SyntaxTheme? = none):
+    pub func init(self, editor: TextEditor, grammar: Grammar, registry: map[str, Grammar], theme: SyntaxTheme? = none):
         self.editor = editor
-        self.tok = Tokenizer(grammar)
+        self.tok = Tokenizer(grammar, registry)
         self.theme = theme else SyntaxTheme({})
         self.states = []
         self.version = -1
@@ -56,12 +60,13 @@ pub class TmHighlighter:
         var spans: list[Highlight] = []
         while true:
             let end = try self.editor.line_end(offset)
-            let text = try self.editor.text_range(offset, end)
-            let outcome = self.tok.run(scalars(text), state)
-            for span in outcome.spans:
-                if let color = self.theme.color_for_scope(span.scope):
-                    spans.append(Highlight(offset + span.start, offset + span.end, color))
-            state = outcome.state
+            if end - offset <= MAX_LINE:
+                let text = try self.editor.text_range(offset, end)
+                let outcome = self.tok.run(scalars(text), state)
+                for span in outcome.spans:
+                    if let color = self.theme.color_for_scope(span.scope):
+                        spans.append(Highlight(offset + span.start, offset + span.end, color))
+                state = outcome.state
             if end >= length:
                 break
             new_states.append(state)

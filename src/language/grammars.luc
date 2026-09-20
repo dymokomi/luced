@@ -9,9 +9,11 @@ import workspace.paths as paths
 
 pub class GrammarSet:
     var by_ext: map[str, Grammar]
+    var by_scope: map[str, Grammar]
 
     pub func init(self, directory: str) -> unit:
         self.by_ext = {}
+        self.by_scope = {}
         let snapshot = Entries(directory) catch failure:
             return
         for index in 0..<snapshot.count():
@@ -20,6 +22,8 @@ pub class GrammarSet:
                 continue
             let text = files.read_text(paths.join(directory, name), 4000000) catch failure: continue
             let grammar = load(text) catch failure: continue
+            if grammar.scope_name != "":
+                self.by_scope[grammar.scope_name] = grammar
             for ext in grammar.file_types:
                 self.by_ext[ext] = grammar
         snapshot.close()
@@ -30,6 +34,10 @@ pub class GrammarSet:
         if ext == "":
             return none
         return self.by_ext[ext]
+
+    ## Every loaded grammar keyed by scope name, for resolving embedded-language includes.
+    pub func scope_map(self) -> map[str, Grammar]:
+        return self.by_scope
 
     pub func count(self) -> int:
         return self.by_ext.length
