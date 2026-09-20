@@ -1,0 +1,56 @@
+{
+  "name": "Prism",
+  "scopeName": "source.prism",
+  "fileTypes": ["prisma"],
+  "patterns": [
+    { "include": "#directive" },
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#char" },
+    { "include": "#keyword" },
+    { "include": "#dtype" },
+    { "include": "#constant" },
+    { "include": "#reference-path" },
+    { "include": "#number" }
+  ],
+  "repository": {
+    "directive": {
+      "match": "^\\s*#prisma\\b.*$",
+      "name": "keyword.control.directive.prism"
+    },
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.line.number-sign.prism"
+    },
+    "string": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.prism",
+      "patterns": [{ "match": "\\\\.", "name": "constant.character.escape.prism" }]
+    },
+    "char": {
+      "match": "'(\\\\.|[^'])'",
+      "name": "string.quoted.single.prism"
+    },
+    "keyword": {
+      "match": "\\b(def|over|reference|connect|disconnect|unset|delete|reorder|string)\\b",
+      "name": "keyword.control.prism"
+    },
+    "dtype": {
+      "match": "\\b(bool|char|int8|int16|int32|int64|uint8|uint16|uint32|uint64|float16|float32|float64|float|float2|float3|float4|str|matrix|vec2f|vec3f|vec4f|token|asset)\\b",
+      "name": "storage.type.prism"
+    },
+    "constant": {
+      "match": "\\b(true|false)\\b",
+      "name": "constant.language.prism"
+    },
+    "reference-path": {
+      "match": "<[^>\\n]*>",
+      "name": "variable.other.reference.prism"
+    },
+    "number": {
+      "match": "-?\\b(0[xX][0-9a-fA-F]+|[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?)\\b",
+      "name": "constant.numeric.prism"
+    }
+  }
+}
