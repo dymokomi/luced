@@ -54,7 +54,7 @@ pub class EditorView:
     pub let menu: Toolbar
     pub let body: ContextMenu
 
-    pub func init(self, explorer: Explorer, actions: EditorActions, font: Font) -> unit!:
+    pub func init(self, explorer: Explorer, actions: EditorActions, font: Font, language_commands: list[Command]) -> unit!:
         let sidebar = Sidebar(explorer, actions, font)
         let output = OutputPane(actions, font)
         let status = Text("Ready", font = font)
@@ -83,5 +83,6 @@ pub class EditorView:
         self.dock = panes
         self.output = output
         self.status = status
-        let content = VStack([menu, panes, Toolbar([status], font = font), palette, prompt, dialog], spacing = 0.0)
+        let statusbar = Toolbar([status, Spacer(), Menu("Syntax", language_commands, font = font)], font = font)
+        let content = VStack([menu, panes, statusbar, palette, prompt, dialog], spacing = 0.0)
         self.body = ContextMenu(content, [actions.palette, actions.settings, actions.theme, actions.reload, actions.next_pane], font = font)

@@ -272,8 +272,8 @@ pub class Workspace:
         if self.message_time > 0.0:
             return
         if let document = self.editors.current_document():
-            let language = "Luce Base" if document.path.ends_with(".lucb") else ("Luce" if document.path.ends_with(".luc") else ("TOML" if document.path.ends_with(".toml") else "Text"))
-            let text = f"{language}  |  Ln {document.editor.line()}, Col {document.editor.column()}  |  UTF-8  |  {self.runner.status}"
+            let language = document.language_label()
+            let text = f"Ln {document.editor.line()}, Col {document.editor.column()}  |  {language}  |  UTF-8  |  {self.runner.status}"
             if text != self.status_text:
                 self.status.set_text(text)
                 self.status_text = text

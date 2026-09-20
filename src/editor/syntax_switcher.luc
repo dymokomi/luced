@@ -1,0 +1,53 @@
+## The status bar's language menu: one command per bundled grammar, and choosing one switches the
+## active document's highlighter by hand. Luce has no closures, so each menu entry is backed by a
+## small object that remembers its grammar file; the command's trigger is a bound method on it.
+from ui import Command
+from interop import Connection
+from workspace.controller import Workspace
+from language.grammars import GrammarSet
+
+class LanguageChoice:
+    let workspace: Workspace
+    let filename: str
+
+    func init(self, workspace: Workspace, filename: str) -> unit:
+        self.workspace = workspace
+        self.filename = filename
+
+    func apply(self) -> unit!:
+        if let document = self.workspace.current_document():
+            try document.set_language(self.filename)
+
+## Owns the language commands (built before the workspace exists, so the menu can be laid out) and
+## wires them to the workspace once it does. Kept alive for the session so the connections persist.
+pub class SyntaxSwitcher:
+    let commands: list[Command]
+    let files: list[str]
+    var choices: list[LanguageChoice]
+    var connections: list[Connection]
+
+    pub func init(self, grammars: GrammarSet) -> unit!:
+        self.commands = []
+        self.files = []
+        self.choices = []
+        self.connections = []
+        for filename in grammars.languages():
+            self.files.append(filename)
+            self.commands.append(try Command(label_for(filename), id = "language:" + filename))
+
+    ## The commands to place in the status-bar language menu.
+    pub func menu_commands(self) -> list[Command]:
+        return self.commands
+
+    ## Connect each command to switch the workspace's active document; call once the workspace is built.
+    pub func connect(self, workspace: Workspace) -> unit!:
+        var index = 0
+        while index < self.commands.length:
+            let choice = LanguageChoice(workspace, self.files[index])
+            self.choices.append(choice)
+            self.connections.append(try self.commands[index].on_trigger(choice.apply))
+            index += 1
+
+## Turn "cpp.tmLanguage.json" into a menu label like "cpp".
+func label_for(filename: str) -> str:
+    return filename.split(".").first else filename

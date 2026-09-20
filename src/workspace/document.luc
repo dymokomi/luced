@@ -18,6 +18,11 @@ pub class Document:
     var highlighting: Connection?
     var highlighter: Highlighter?
     var tm: TmHighlighter?
+    ## The name of the active highlighter (for the status bar), and the set + theme kept so the
+    ## user can switch highlighter by hand from the status bar's language menu.
+    var language: str
+    var grammars: GrammarSet? = none
+    var syntax: SyntaxTheme? = none
 
     pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none, grammars: GrammarSet? = none, blank: bool = false, wrap: bool = false) -> unit!:
         let text = "" if blank else files.read_text(path)
@@ -31,6 +36,7 @@ pub class Document:
         self.highlighting = none
         self.highlighter = none
         self.tm = none
+        self.language = "Text"
         try self.attach(syntax, grammars)
 
     ## Connect the highlighter that fits the current path: a grammar from the set when one claims
@@ -40,6 +46,9 @@ pub class Document:
         self.highlighting = none
         self.highlighter = none
         self.tm = none
+        self.grammars = grammars
+        self.syntax = syntax
+        self.language = "Text"
         if self.path == "":
             return
         # Luce and Luce Base use the built-in single-pass lexer: it is far faster than running a
@@ -49,13 +58,37 @@ pub class Document:
             service.update()
             self.highlighting = self.editor.on_change(service.update)
             self.highlighter = service
+            self.language = "Luce Base" if self.path.ends_with(".lucb") else "Luce"
             return
+        self.language = language_from_path(self.path)
         if let registry = grammars:
             if let grammar = registry.grammar_for(self.path):
                 let service = try TmHighlighter(self.editor, grammar, syntax)
                 service.update()
                 self.highlighting = self.editor.on_change(service.update)
                 self.tm = service
+                let named = grammar.name()
+                if named != "":
+                    self.language = named
+
+    ## The language label for the status bar.
+    pub func language_label(self) -> str:
+        return self.language
+
+    ## Switch the highlighter to the grammar in `filename` (from the status-bar language menu).
+    pub func set_language(self, filename: str) -> unit!:
+        let registry = self.grammars else return
+        let grammar = registry.grammar_named(filename) else return
+        if let connection = self.highlighting: connection.disconnect()
+        self.highlighting = none
+        self.highlighter = none
+        self.tm = none
+        let service = try TmHighlighter(self.editor, grammar, self.syntax)
+        service.update()
+        self.highlighting = self.editor.on_change(service.update)
+        self.tm = service
+        let named = grammar.name()
+        self.language = named if named != "" else filename
 
     pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
         if let highlighter = self.highlighter:
@@ -101,3 +134,12 @@ pub class Document:
         self.original = text
         self.baseline = self.editor.text()
         self.editor.set_baseline(self.baseline)
+
+## A fallback language label from a path's extension, for files no grammar claims.
+func language_from_path(path: str) -> str:
+    let base = path.replace("\\", "/").split("/").last else path
+    let parts = base.split(".")
+    if parts.length < 2:
+        return "Text"
+    let ext = parts.last else ""
+    return ext if ext != "" else "Text"

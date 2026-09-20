@@ -5,6 +5,7 @@ from interop import Connection
 from editor.options import Options
 from editor.actions import EditorActions
 from editor.journal import Journal
+from editor.syntax_switcher import SyntaxSwitcher
 from editor.views import EditorView
 from editor.configuration import Configuration
 from configuration.store import Store
@@ -35,6 +36,7 @@ pub class Editor:
     let options: Options
     let connections: list[Connection]
     let tools: AiTools
+    let switcher: SyntaxSwitcher
     var ai_expecting: bool = false
     var ai_waiting: bool = false
     var ai_mode: str = "ask"
@@ -62,11 +64,13 @@ pub class Editor:
         let absolute = files.absolute_path(options.location)
         let is_file = files.path_kind(absolute) == files.FileKind.regular
         let explorer = Explorer(paths.parent(absolute) if is_file else absolute)
+        let grammars = GrammarSet(store.grammars_dir)
+        let switcher = try SyntaxSwitcher(grammars)
         let actions = EditorActions()
         let journal = Journal(store.directory)
         actions.files.set_journal(journal)
         journal.record(("open file " if is_file else "open folder ") + absolute)
-        let view = EditorView(explorer, actions, font)
+        let view = EditorView(explorer, actions, font, switcher.menu_commands())
         let app = Application(view.body, title = "luced", width = settings.width, height = settings.height, theme = appearance.theme)
         let runner = Runner(view.output.output, options.luce if options.luce_override else settings.luce,
             options.base if options.base_override else settings.base)
@@ -76,10 +80,12 @@ pub class Editor:
         view.dock.set_fraction(view.sidebar.body, 0.22)
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors, view.dialog)
         workspace.set_syntax(appearance.syntax)
-        workspace.set_grammars(GrammarSet(store.grammars_dir))
+        workspace.set_grammars(grammars)
+        try switcher.connect(workspace)
         let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
         let tools = AiTools(workspace)
         self.app = app
+        self.switcher = switcher
         self.workspace = workspace
         self.runner = runner
         self.view = view
