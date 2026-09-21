@@ -76,6 +76,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-python
             mingw-w64-ucrt-x86_64-vulkan-devel
+            mingw-w64-ucrt-x86_64-vulkan-loader
       - name: Install Linux font backend
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libcairo2-dev fonts-dejavu-core
