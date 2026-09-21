@@ -95,6 +95,10 @@ pub func main(arguments: list[str]) -> int!:
             editor.app.stop()
         elif frames >= 12 and not editor.runner.busy():
             probe.begin("luced")
+            # Capturing begins after the UI mutation used by this preview may
+            # already have been painted. Force one final presentation through
+            # the observer before the smoke-frame limit stops the loop.
+            editor.app.invalidate()
             captured = true)
 """
     if a.menu or a.palette or a.context or a.hover or a.dock or a.wrap:
