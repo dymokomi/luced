@@ -77,11 +77,13 @@ jobs:
             mingw-w64-ucrt-x86_64-python
             mingw-w64-ucrt-x86_64-vulkan-devel
             mingw-w64-ucrt-x86_64-vulkan-loader
+      - name: Configure native library search
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: echo "LIBRARY_PATH=$(cygpath -m /ucrt64/lib)" >> "$GITHUB_ENV"
       - name: Verify Vulkan loader
         if: runner.os == 'Windows'
         shell: msys2 {0}
-        env:
-          LIBRARY_PATH: /ucrt64/lib
         run: |
           test -f /ucrt64/lib/libvulkan-1.dll.a
           test "$(gcc -print-file-name=libvulkan-1.dll.a)" != "libvulkan-1.dll.a"
@@ -115,7 +117,6 @@ jobs:
         working-directory: luced
         env:
           CC: gcc
-          LIBRARY_PATH: /ucrt64/lib
         run: |
           python3 tools/build.py
           python3 tests/run.py
