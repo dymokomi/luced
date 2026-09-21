@@ -55,6 +55,15 @@ def main():
     ]
     for path in files:
         lines.append("    try write_default(directory, \"%s\", \"%s\")" % (path.name, escape(path.read_text())))
+    fallback = {"extensions": {}, "scopes": {}}
+    for path in files:
+        data = json.loads(path.read_text())
+        if data.get("scopeName"):
+            fallback["scopes"][data["scopeName"]] = path.name
+        for ext in data.get("fileTypes", []):
+            fallback["extensions"][ext] = path.name
+    lines.append("    try write_default(directory, \"index.json\", \"%s\")" %
+                 escape(json.dumps(fallback, separators=(",", ":")) + "\n"))
     if not files:
         lines.append("    return")
     OUT.write_text("\n".join(lines) + "\n")

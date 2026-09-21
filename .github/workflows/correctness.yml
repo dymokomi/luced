@@ -28,6 +28,10 @@ jobs:
           echo "base=$(cat luced/bootstrap/BASE)" >> "$GITHUB_OUTPUT"
           echo "luce=$(cat luced/bootstrap/LUCE)" >> "$GITHUB_OUTPUT"
           echo "ui=$(cat luced/bootstrap/UI)" >> "$GITHUB_OUTPUT"
+          for pin in COLOR SVG CONFIG AI TEXTMATE REGEX JSON HTTP_CLIENT TLS CRYPTO; do
+            key=$(printf '%s' "$pin" | tr '[:upper:]' '[:lower:]')
+            echo "$key=$(cat luced/bootstrap/$pin)" >> "$GITHUB_OUTPUT"
+          done
       - uses: actions/checkout@v7
         with:
           repository: dymokomi/luce-base
@@ -43,6 +47,26 @@ jobs:
           repository: dymokomi/luce-ui
           ref: ${{ steps.pins.outputs.ui }}
           path: luce-ui
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-color, ref: "${{ steps.pins.outputs.color }}", path: luce-color}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-svg, ref: "${{ steps.pins.outputs.svg }}", path: luce-svg}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-config, ref: "${{ steps.pins.outputs.config }}", path: luce-config}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-ai, ref: "${{ steps.pins.outputs.ai }}", path: luce-ai}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-textmate, ref: "${{ steps.pins.outputs.textmate }}", path: luce-textmate}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-regex, ref: "${{ steps.pins.outputs.regex }}", path: luce-regex}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-json, ref: "${{ steps.pins.outputs.json }}", path: luce-json}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-http-client, ref: "${{ steps.pins.outputs.http_client }}", path: luce-http-client}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-tls, ref: "${{ steps.pins.outputs.tls }}", path: luce-tls}
+      - uses: actions/checkout@v7
+        with: {repository: dymokomi/luce-crypto, ref: "${{ steps.pins.outputs.crypto }}", path: luce-crypto}
       - uses: msys2/setup-msys2@v2
         if: runner.os == 'Windows'
         with:
