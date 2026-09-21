@@ -1,9 +1,11 @@
 ## Application coordination stays in Luce. Native controls expose user intent;
 ## this controller handles workspace navigation, dirty files and command status.
-from ui import Application, Text, TextEditor, ListView, Panel, ContextMenu, ConfirmDialog
+from ui import Application, Text, TextEditor, TableView, Panel, ContextMenu, ConfirmDialog, Theme
+from gpu import Color
 from workspace.explorer import Explorer
 from workspace.editors import Editors
 from workspace.document import Document
+from workspace.status import FileStatus
 from commands.runner import Runner
 from language.appearance import SyntaxTheme
 from language.grammars import GrammarSet
@@ -17,17 +19,22 @@ import editor.file_items as file_items
 pub class Workspace:
     let app: Application
     let explorer: Explorer
-    let listing: ListView
+    let listing: TableView
     let directory_header: Panel
     let status: Text
     let runner: Runner
     let editors: Editors
     let dialog: ConfirmDialog
+    let file_status: FileStatus
+    var git_added: Color
+    var git_modified: Color
+    var status_started: bool = false
+    var dirty_sig: str = ""
     var status_text: str = ""
     var message_time: float = 0.0
 
-    pub func init(self, app: Application, explorer: Explorer, listing: ListView, directory_header: Panel,
-                  status: Text, runner: Runner, editors: Editors, dialog: ConfirmDialog):
+    pub func init(self, app: Application, explorer: Explorer, listing: TableView, directory_header: Panel,
+                  status: Text, runner: Runner, editors: Editors, dialog: ConfirmDialog, theme: Theme):
         self.app = app
         self.explorer = explorer
         self.listing = listing
@@ -36,6 +43,44 @@ pub class Workspace:
         self.runner = runner
         self.editors = editors
         self.dialog = dialog
+        self.file_status = FileStatus()
+        self.git_added = theme.vcs_added
+        self.git_modified = theme.vcs_modified
+
+    ## The explorer rows reflect the applied theme's version-control accents; the
+    ## configuration reload calls this so edited colors take effect immediately.
+    pub func set_theme_colors(self, theme: Theme) -> unit!:
+        self.git_added = theme.vcs_added
+        self.git_modified = theme.vcs_modified
+        self.rebuild()
+
+    ## Rebuild the explorer rows from the current entries, background status and the
+    ## set of files with unsaved edits, preserving the selection.
+    func rebuild(self) -> unit!:
+        self.listing.set_rows(file_items.present(self.explorer.entries, self.file_status, self.dirty_paths(), self.git_added, self.git_modified))
+
+    ## Absolute paths of open files with unsaved changes (shown bold in the explorer).
+    func dirty_paths(self) -> list[str]!:
+        var edited: list[str] = []
+        for document in self.editors.documents():
+            if not document.is_untitled() and document.dirty():
+                edited.append(document.path)
+        return edited
+
+    ## A cheap fingerprint of the unsaved set, so bold marks refresh only on a change.
+    func dirty_signature(self) -> str!:
+        var signature = ""
+        for path in self.dirty_paths():
+            signature += path + "\n"
+        return signature
+
+    ## Start the off-thread git and line-count scans for the current directory.
+    func begin_status(self) -> unit!:
+        var code_files: list[str] = []
+        for entry in self.explorer.entries:
+            if not entry.directory and file_items.countable(entry.name):
+                code_files.append(entry.path)
+        self.file_status.begin(self.explorer.directory, code_files)
 
     pub func has_document(self) -> bool:
         return self.editors.current_document() != none
@@ -73,7 +118,8 @@ pub class Workspace:
 
     pub func refresh_files(self) -> unit!:
         self.explorer.open(self.explorer.directory)
-        self.listing.set_items(file_items.present(self.explorer.entries))
+        self.begin_status()
+        self.rebuild()
 
     pub func hidden_shown(self) -> bool:
         return self.explorer.show_hidden
@@ -135,7 +181,9 @@ pub class Workspace:
         let entry = self.explorer.entries[index]
         if entry.directory:
             self.explorer.open(entry.path)
-            self.listing.set_items(file_items.present(self.explorer.entries))
+            self.begin_status()
+            self.listing.select(-1)
+            self.rebuild()
             self.directory_header.set_detail(paths.name(self.explorer.directory))
         else:
             self.open(entry.path)
@@ -177,6 +225,7 @@ pub class Workspace:
             for document in self.editors.documents():
                 if not document.is_untitled(): document.save()
             self.changed()
+            self.begin_status()
             self.report("All open files saved")
             return
         let document = self.editors.current_document() else return
@@ -189,6 +238,7 @@ pub class Workspace:
         elif name == "save":
             document.save()
             self.changed()
+            self.begin_status()
             self.report("Saved " + paths.name(document.path))
         elif name == "build" or name == "run":
             for open_document in self.editors.documents():
@@ -268,16 +318,27 @@ pub class Workspace:
 
     func tick(self, elapsed: float) -> unit!:
         self.runner.poll()
+        if not self.status_started:
+            self.status_started = true
+            self.begin_status()
+        if self.file_status.poll():
+            self.rebuild()
+        let signature = self.dirty_signature()
+        if signature != self.dirty_sig:
+            self.dirty_sig = signature
+            self.rebuild()
+        # Each pane keeps its own syntax/caret/encoding status; the global bar below
+        # carries only workspace-wide state (build/run status and transient messages).
+        self.editors.refresh_status()
         self.message_time -= elapsed
         if self.message_time > 0.0:
             return
-        if let document = self.editors.current_document():
-            let language = document.language_label()
-            let text = f"Ln {document.editor.line()}, Col {document.editor.column()}  |  {language}  |  UTF-8  |  {self.runner.status}"
-            if text != self.status_text:
-                self.status.set_text(text)
-                self.status_text = text
+        let text = self.runner.status
+        if text != self.status_text:
+            self.status.set_text(text)
+            self.status_text = text
 
     pub func close(self):
+        self.file_status.close()
         self.runner.close()
         self.editors.close()

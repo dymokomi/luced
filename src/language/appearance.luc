@@ -70,6 +70,13 @@ pub class SyntaxTheme:
         # Assembly directives (.text, .globl, …) read as structure, distinct from mnemonics.
         if scope.starts_with("keyword.control.directive"):
             return self.type_color
+        # Built-in type names (`storage.type`: i64, u8, str, C's int/char, …) take the
+        # type colour, distinct from keywords. Type-declaring keywords — `function` in
+        # JS, `class`/`struct` where a grammar tags them storage.type — stay keyword.
+        if scope.starts_with("storage.type.function") or scope.starts_with("storage.type.class") or scope.starts_with("storage.type.struct") or scope.starts_with("storage.type.namespace"):
+            return self.keyword_color
+        if scope.starts_with("storage.type"):
+            return self.type_color
         if scope.starts_with("constant.language") or scope.starts_with("keyword") or scope.starts_with("storage"):
             return self.keyword_color
         if scope.starts_with("constant"):

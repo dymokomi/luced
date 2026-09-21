@@ -17,8 +17,10 @@ p.add_argument('--menu', action='store_true', help='capture the File popup throu
 p.add_argument('--palette', action='store_true', help='capture command search')
 p.add_argument('--context', choices=['editor', 'files', 'output'], help='capture a right-click menu')
 p.add_argument('--prompt', action='store_true', help='capture the new-file prompt')
-p.add_argument('--hover', choices=['edit-menu', 'divider', 'gutter', 'output'], help='capture hover feedback or top-level menu switching')
+p.add_argument('--hover', choices=['edit-menu', 'divider', 'gutter', 'output', 'files'], help='capture hover feedback or top-level menu switching')
 p.add_argument('--run', action='store_true', help='capture after the selected source builds and runs')
+p.add_argument('--settle', action='store_true', help='pump the workspace clock each frame so background scans (git status, line counts) finish before capture')
+p.add_argument('--color', action='store_true', help='click the first color chip to open the color editor before capture')
 p.add_argument('--wrap', action='store_true', help='capture with soft word wrap toggled on')
 p.add_argument('--diff', action='store_true', help='capture gutter change bars after editing the file')
 p.add_argument('--tabs', action='store_true', help='open additional source files as tabs')
@@ -141,6 +143,10 @@ pub func main(arguments: list[str]) -> int!:
             events = '''            let bounds = editor.view.sidebar.body.layout().bounds()
             editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + bounds.width + 2.0, y = bounds.y + 40.0))
 '''
+        elif a.hover == 'files':
+            events = '''            let bounds = editor.view.sidebar.listing.layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + 60.0, y = bounds.y + 100.0))
+'''
         elif a.hover == 'gutter':
             source = 'from ui import invalid\n' + source
             events = '''            let control = editor.workspace.current_editor() else error(invalid, "preview needs an open document")
@@ -197,6 +203,23 @@ pub func main(arguments: list[str]) -> int!:
             if a.dock != 'preview':
                 events += '            editor.app.dispatch(Event(kind = EventKind.pointer_up, x = x, y = y))\n'
         source = source.replace('        if captured:', '        if frames == 10:\n' + events + '        if captured:')
+    if a.settle:
+        source = source.replace('        frames += 1\n', '        frames += 1\n        editor.workspace.frame(0.6)\n')
+    if a.color:
+        source = 'from ui import Event\nfrom input import EventKind\nfrom ui import invalid\n' + source
+        source = source.replace('        if captured:', """        if frames == 10:
+            let control = editor.workspace.current_editor() else error(invalid, "preview needs an editor")
+            let offset = control.first_swatch()
+            if offset >= 0:
+                let anchor = control.swatch_anchor(offset)
+                let bounds = control.layout().bounds()
+                editor.app.dispatch(Event(kind = EventKind.pointer_down, button = 0, x = bounds.x + anchor.x + 6.0, y = bounds.y + anchor.y - 8.0))
+                editor.app.dispatch(Event(kind = EventKind.pointer_up, button = 0, x = bounds.x + anchor.x + 6.0, y = bounds.y + anchor.y - 8.0))
+        if frames == 11:
+            let popup = editor.view.color.layout().bounds()
+            editor.app.dispatch(Event(kind = EventKind.pointer_down, button = 0, inside = true, x = popup.x + popup.width - 30.0, y = popup.y + popup.height * 0.3))
+            editor.app.dispatch(Event(kind = EventKind.pointer_up, button = 0, x = popup.x + popup.width - 30.0, y = popup.y + popup.height * 0.3))
+        if captured:""")
     if a.tabs:
         for path in [ROOT / 'src/editor/panel.luc', ROOT / 'src/editor/views.luc']:
             source += '    editor.workspace.open(' + json.dumps(str(path)) + ')\n'

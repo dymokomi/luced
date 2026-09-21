@@ -1,6 +1,8 @@
 ## One editor tab owns its presentation and subscriptions. Its Document keeps
-## text, history and language analysis when the tab moves to another group.
-from ui import Command, ContextMenu, Font, IconKind, Panel, Size, TextEditor, VStack
+## text, history and language analysis when the tab moves to another group. Each
+## pane carries its own status bar: the document's syntax, caret position, encoding
+## and line ending, with the language menu that switches its highlighter.
+from ui import Command, ContextMenu, Font, IconKind, Menu, Panel, Size, Spacer, Text, TextEditor, Toolbar, VStack
 from interop import Connection
 from workspace.document import Document
 import editor.file_items as file_items
@@ -11,20 +13,26 @@ pub class EditorPanel:
     pub let context: ContextMenu
     pub var document: Document? = none
     let host: VStack
+    let status: Text
+    let statusbar: Toolbar
     pub let connections: list[Connection]
 
-    pub func init(self, actions: list[Command], font: Font) -> unit!:
+    pub func init(self, actions: list[Command], font: Font, language_commands: list[Command]) -> unit!:
         let welcome = TextEditor("Open a file from the explorer.\n\nUse + to add a tab or split this pane.\nDrag a tab to move it between panes.\n", read_only = true, line_numbers = false, font = font)
-        let host = VStack([welcome], spacing = 0.0)
+        let status = Text("", font = font)
+        let statusbar = Toolbar([status, Spacer(), Menu("Syntax", language_commands, font = font)], font = font)
+        let host = VStack([welcome, statusbar], spacing = 0.0)
         host.layout().set_flex()
         let context = ContextMenu(host, actions, font = font)
         self.host = host
+        self.status = status
+        self.statusbar = statusbar
         self.context = context
         self.body = Panel("EDITOR", context, icon = IconKind.code, minimum = Size(180.0, 80.0))
         self.connections = []
 
     pub func open(self, document: Document) -> unit!:
-        self.host.set_children([document.editor])
+        self.host.set_children([document.editor, self.statusbar])
         self.document = document
         self.connections.append(document.editor.on_change(self.update))
         self.update()
@@ -35,6 +43,16 @@ pub class EditorPanel:
             self.body.set_text(name + (" *" if document.dirty() else ""))
             self.body.set_detail("" if document.is_untitled() else paths.parent(document.path))
             self.body.set_icon(file_items.icon(document.path))
+        self.refresh_status()
+
+    ## The pane's own status line: syntax, caret position, encoding and line ending.
+    ## Refreshed on edits and, for caret moves that leave the text unchanged, once a
+    ## frame from the workspace.
+    pub func refresh_status(self) -> unit!:
+        if let document = self.document:
+            self.status.set_text(f"{document.language_label()}    Ln {document.editor.line()}, Col {document.editor.column()}    UTF-8    {document.line_ending()}")
+        else:
+            self.status.set_text("")
 
     pub func close(self):
         for connection in self.connections: connection.disconnect()

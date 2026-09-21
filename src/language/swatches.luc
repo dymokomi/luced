@@ -1,0 +1,15 @@
+## Color chips beside CSS-style hex literals (`#rgb`/`#rrggbb`), refreshed on every
+## edit. Kept as its own object — like the folder and highlighter — so its change
+## callback is owned here rather than by the Document, which would otherwise close a
+## reference cycle through the editor's change signal.
+from ui import TextEditor
+
+pub class SwatchHighlighter:
+    let editor: TextEditor
+
+    pub func init(self, editor: TextEditor) -> unit!:
+        self.editor = editor
+        self.editor.set_hex_swatches()
+
+    pub func update(self) -> unit!:
+        self.editor.set_hex_swatches()

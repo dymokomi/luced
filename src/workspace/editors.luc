@@ -1,6 +1,6 @@
 ## Document-tab lifetime and selection. Docking itself stays in luce-ui; this
 ## component decides which document to open and whether a tab may close.
-from ui import Command, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu
+from ui import Command, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu, ColorEditor
 from interop import Connection
 from editor.panel import EditorPanel
 from editor.text_actions import TextActions
@@ -16,6 +16,7 @@ pub class Editors:
     let anchor: Panel
     let font: Font
     let commands: list[Command]
+    let language_commands: list[Command]
     let editing: TextActions
     let tabs: list[EditorPanel]
     let connections: list[Connection]
@@ -24,13 +25,18 @@ pub class Editors:
     var syntax: SyntaxTheme? = none
     var grammars: GrammarSet? = none
     var wrap: bool = false
+    var color: ColorEditor? = none
+    var color_target: TextEditor? = none
+    var color_offset: int = -1
+    var color_wired: bool = false
 
-    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Command], editing: TextActions, wrap: bool = false) -> unit!:
+    pub func init(self, dock: DStack, anchor: Panel, font: Font, commands: list[Command], language_commands: list[Command], editing: TextActions, wrap: bool = false) -> unit!:
         self.dock = dock
         self.anchor = anchor
         self.font = font
         self.wrap = wrap
         self.commands = commands
+        self.language_commands = language_commands
         self.editing = editing
         self.tabs = []
         self.connections = []
@@ -41,11 +47,40 @@ pub class Editors:
         discard(self.create(anchor, DockPosition.top))
         dock.set_fraction(anchor, 0.77)
 
+    ## Adopt the shared color editor and wire its live changes back to the source.
+    pub func set_color_editor(self, color: ColorEditor) -> unit!:
+        self.color = color
+        if not self.color_wired:
+            self.connections.append(color.on_change(self.apply_color))
+            self.color_wired = true
+
+    ## A color chip was clicked: open the editor under it, seeded from the token.
+    func open_color(self, editor: TextEditor, offset: int) -> unit!:
+        let color = self.color else return
+        let token = editor.swatch_token(offset)
+        let anchor = editor.swatch_anchor(offset)
+        let bounds = editor.layout().bounds()
+        self.color_target = editor
+        self.color_offset = offset
+        color.open_at(token, bounds.x + anchor.x, bounds.y + anchor.y)
+
+    ## Replace the color token in place with the edited hex (its length may change).
+    func apply_color(self, hex: str) -> unit!:
+        let editor = self.color_target else return
+        let token = editor.swatch_token(self.color_offset)
+        editor.set_selection(self.color_offset, self.color_offset + token.length)
+        editor.insert(hex)
+
     pub func documents(self) -> list[Document]:
         var documents: list[Document] = []
         for tab in self.tabs:
             if let document = tab.document: documents.append(document)
         return documents
+
+    ## Refresh every pane's own status bar (caret position moves without a text change).
+    pub func refresh_status(self) -> unit!:
+        for tab in self.tabs:
+            tab.refresh_status()
 
     func sync_focus(self):
         for tab in self.tabs:
@@ -124,10 +159,12 @@ pub class Editors:
                 destination = self.create(self.anchor, DockPosition.top)
         let tab = destination else return
         tab.open(document)
+        tab.connections.append(document.editor.on_swatch_activate(func(offset: int) -> unit!:
+            self.open_color(document.editor, offset)))
         self.dock.select(tab.body)
 
     func create(self, relative: Panel?, position: DockPosition) -> EditorPanel!:
-        let tab = EditorPanel(self.commands, self.font)
+        let tab = EditorPanel(self.commands, self.font, self.language_commands)
         tab.connections.append(tab.context.on_open(func() -> unit!:
             self.dock.select(tab.body)
             self.editing.bind(self.current_editor())))

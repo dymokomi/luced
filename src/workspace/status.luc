@@ -1,0 +1,142 @@
+## File-explorer decorations gathered off the main thread. Git state and line counts
+## are produced by short-lived child processes (`git`, `wc`) polled from the frame
+## loop, so opening a folder never blocks the UI on the filesystem. Results are keyed
+## by absolute path; presentation (colors, columns) belongs to the editor, not here.
+from process import Command
+
+## A path's version-control state, for the explorer's name color. Plain integer codes
+## rather than an enum, which Luce reserves for its Base tier.
+pub let git_unknown: int = 0
+pub let git_untracked: int = 1
+pub let git_modified: int = 2
+
+pub class FileStatus:
+    var loc: map[str, int]
+    var git: map[str, int]
+    var in_repo: bool
+    var root: str
+    var root_cmd: Command? = none
+    var git_cmd: Command? = none
+    var loc_cmd: Command? = none
+    var git_output: str = ""
+    var have_root: bool = false
+    var have_git: bool = false
+
+    pub func init(self):
+        self.loc = {}
+        self.git = {}
+        self.in_repo = false
+        self.root = ""
+        self.root_cmd = none
+        self.git_cmd = none
+        self.loc_cmd = none
+        self.git_output = ""
+        self.have_root = false
+        self.have_git = false
+
+    ## Start the background scans for `directory`: the repository root and porcelain
+    ## status (to color names) and a line count over `code_files` (to fill the LOC
+    ## column). Any previous scan is cancelled first.
+    pub func begin(self, directory: str, code_files: list[str]) -> unit!:
+        self.cancel()
+        self.loc = {}
+        self.git = {}
+        self.in_repo = false
+        self.root = ""
+        self.git_output = ""
+        self.have_root = false
+        self.have_git = false
+        self.root_cmd = Command("git", ["rev-parse", "--show-toplevel"], directory = directory)
+        self.git_cmd = Command("git", ["status", "--porcelain"], directory = directory)
+        if code_files.length > 0:
+            var args = ["-l"]
+            for file in code_files:
+                args.append(file)
+            self.loc_cmd = Command("wc", args, directory = directory)
+        else:
+            self.loc_cmd = none
+
+    ## Collect any finished scans. Returns true when new data arrived, so the caller
+    ## knows to rebuild the explorer rows.
+    pub func poll(self) -> bool!:
+        var updated = false
+        if let command = self.root_cmd:
+            if command.is_finished():
+                if (command.exit_code() else -1) == 0:
+                    self.root = command.output().trim()
+                    self.in_repo = true
+                command.close()
+                self.root_cmd = none
+                self.have_root = true
+                if self.resolve_git():
+                    updated = true
+        if let command = self.git_cmd:
+            if command.is_finished():
+                self.git_output = command.output()
+                command.close()
+                self.git_cmd = none
+                self.have_git = true
+                if self.resolve_git():
+                    updated = true
+        if let command = self.loc_cmd:
+            if command.is_finished():
+                self.parse_loc(command.output())
+                command.close()
+                self.loc_cmd = none
+                updated = true
+        return updated
+
+    ## Once both the root and the porcelain output are in hand, key each changed path
+    ## by its absolute form so the explorer can look it up directly.
+    func resolve_git(self) -> bool:
+        if not self.have_root or not self.have_git:
+            return false
+        if not self.in_repo:
+            return true
+        for line in self.git_output.split("\n"):
+            if line.length < 4:
+                continue
+            let code = line[0..<2]
+            var rel = line[3..]
+            if rel.ends_with("/"):
+                rel = rel[..<rel.length - 1]
+            let absolute = self.root + "/" + rel
+            if code.starts_with("??"):
+                self.git[absolute] = git_untracked
+            else:
+                self.git[absolute] = git_modified
+        return true
+
+    ## `wc -l` prints "<count> <path>" per file and a trailing "total"; map each count
+    ## to the path it names.
+    func parse_loc(self, output: str):
+        for line in output.split("\n"):
+            let trimmed = line.trim()
+            if trimmed.length == 0:
+                continue
+            let space = trimmed.index_of(" ") else continue
+            let rest = trimmed[space..].trim()
+            if rest == "total":
+                continue
+            let count = int(trimmed[..<space]) catch failure: continue
+            self.loc[rest] = count
+
+    pub func loc_of(self, path: str) -> int?:
+        return self.loc[path]
+
+    pub func git_of(self, path: str) -> int:
+        return self.git[path] else git_unknown
+
+    pub func cancel(self):
+        if let command = self.root_cmd:
+            command.close()
+            self.root_cmd = none
+        if let command = self.git_cmd:
+            command.close()
+            self.git_cmd = none
+        if let command = self.loc_cmd:
+            command.close()
+            self.loc_cmd = none
+
+    pub func close(self):
+        self.cancel()

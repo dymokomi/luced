@@ -12,7 +12,7 @@ pub class Appearance:
 
     pub func init(self, source: str = "") -> unit!:
         let table = Table(source)
-        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.pressed", "colors.border", "colors.active_border", "colors.gutter", "colors.shadow", "popup.shadow_offset", "popup.shadow_opacity", "layout.header_inset_cells", "layout.caret_width", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.section", "syntax.number", "syntax.type", "syntax.other"])
+        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.button_hover", "colors.pressed", "colors.menu", "colors.menu_hover", "colors.menu_selection", "colors.border", "colors.active_border", "colors.gutter", "colors.vcs_added", "colors.vcs_modified", "colors.shadow", "popup.shadow_offset", "popup.shadow_opacity", "layout.header_inset_cells", "layout.caret_width", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.section", "syntax.number", "syntax.type", "syntax.other"])
         var theme = Theme()
         theme.background = read_color(table, "colors.background", theme.background)
         theme.panel = read_color(table, "colors.panel", theme.panel)
@@ -21,10 +21,16 @@ pub class Appearance:
         theme.selection = read_color(table, "colors.selection", theme.selection)
         theme.accent = read_color(table, "colors.accent", theme.accent)
         theme.button = read_color(table, "colors.button", theme.button)
+        theme.button_hover = read_color(table, "colors.button_hover", theme.button_hover)
         theme.pressed = read_color(table, "colors.pressed", theme.pressed)
+        theme.menu = read_color(table, "colors.menu", theme.menu)
+        theme.menu_hover = read_color(table, "colors.menu_hover", theme.menu_hover)
+        theme.menu_selection = read_color(table, "colors.menu_selection", theme.menu_selection)
         theme.border = read_color(table, "colors.border", theme.border)
         theme.active_border = read_color(table, "colors.active_border", theme.active_border)
         theme.gutter = read_color(table, "colors.gutter", theme.gutter)
+        theme.vcs_added = read_color(table, "colors.vcs_added", theme.vcs_added)
+        theme.vcs_modified = read_color(table, "colors.vcs_modified", theme.vcs_modified)
         theme.shadow = read_color(table, "colors.shadow", theme.shadow)
         theme.shadow_offset = table.number("popup.shadow_offset", theme.shadow_offset, 0.0, 32.0)
         theme.shadow_opacity = table.number("popup.shadow_opacity", theme.shadow_opacity, 0.0, 1.0)
@@ -58,4 +64,4 @@ func read_color(table: Table, key: str, fallback: Color) -> Color!:
     return Color(components[0], components[1], components[2])
 
 pub func defaults() -> str:
-    return "# luced theme. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#1D232E\"\npanel = \"#282F39\"\nforeground = \"#D7DEEA\"\nmuted = \"#8B9EB3\"\nselection = \"#355D81\"\naccent = \"#7CD4F6\"\nbutton = \"#323B48\"\npressed = \"#42596F\"\nborder = \"#455261\"\nactive_border = \"#598199\"\ngutter = \"#282F39\"\nshadow = \"#000000\"\n\n[popup]\nshadow_offset = 4.0\nshadow_opacity = 0.35\n\n[layout]\nheader_inset_cells = 1.5\ncaret_width = 2.0\n\n[syntax]\nkeyword = \"#C48BD3\"\nstring = \"#A8C890\"\ncomment = \"#799997\"\nsection = \"#A9CFC9\"\nnumber = \"#DDAF79\"\ntype = \"#61C2D3\"\nother = \"#C7D1A2\"\n"
+    return "# luced theme. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#202020\"\npanel = \"#2f2f2f\"\nforeground = \"#D7DEEA\"\nmuted = \"#757575\"\nselection = \"#323232\"\naccent = \"#ef963e\"\n\nbutton = \"#393b3b\"\nbutton_hover = \"#656565\"\n\nmenu = \"#393b3b\"\nmenu_hover = \"#656565\"\nmenu_selection = \"#d27d2b\"\n\npressed = \"#ef963e\"\nborder = \"#424443\"\nactive_border = \"#908e8f\"\ngutter = \"#323232\"\nvcs_added = \"#6FCF7F\"\nvcs_modified = \"#E0B341\"\nshadow = \"#000000\"\n\n[popup]\nshadow_offset = 4.0\nshadow_opacity = 0.35\n\n[layout]\nheader_inset_cells = 1.5\ncaret_width = 2.0\n\n[syntax]\nkeyword = \"#ff7959\"\nstring = \"#76715a\"\ncomment = \"#799997\"\nsection = \"#A9CFC9\"\nnumber = \"#8eadff\"\ntype = \"#61c2b7\"\nother = \"#bd82d3\"\n"

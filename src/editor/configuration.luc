@@ -72,6 +72,7 @@ pub class Configuration:
             self.font.configure(settings.font_size, settings.font_family)
             self.family = settings.font_family
         self.workspace.set_syntax(appearance.syntax)
+        self.workspace.set_theme_colors(appearance.theme)
         self.app.set_theme(appearance.theme)
         self.root.invalidate()
         self.runner.configure(self.options.luce if self.options.luce_override else settings.luce,

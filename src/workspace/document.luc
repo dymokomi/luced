@@ -3,6 +3,7 @@
 from ui import Font, TextEditor
 from language.folding import Folder
 from language.tm import TmHighlighter
+from language.swatches import SwatchHighlighter
 from language.grammars import GrammarSet
 from language.appearance import SyntaxTheme
 from interop import Connection
@@ -17,8 +18,10 @@ pub class Document:
     let crlf: bool
     var highlighting: Connection?
     var folding: Connection?
+    var swatching: Connection?
     var tm: TmHighlighter?
     var folder: Folder?
+    var swatcher: SwatchHighlighter?
     ## The name of the active highlighter (for the status bar), and the set + theme kept so the
     ## user can switch highlighter by hand from the status bar's language menu.
     var language: str
@@ -36,8 +39,10 @@ pub class Document:
         editor.set_baseline(self.baseline)
         self.highlighting = none
         self.folding = none
+        self.swatching = none
         self.tm = none
         self.folder = none
+        self.swatcher = none
         self.language = "Text"
         try self.attach(syntax, grammars)
 
@@ -48,10 +53,13 @@ pub class Document:
     func attach(self, syntax: SyntaxTheme?, grammars: GrammarSet?) -> unit!:
         if let connection = self.highlighting: connection.disconnect()
         if let connection = self.folding: connection.disconnect()
+        if let connection = self.swatching: connection.disconnect()
         self.highlighting = none
         self.folding = none
+        self.swatching = none
         self.tm = none
         self.folder = none
+        self.swatcher = none
         self.grammars = grammars
         self.syntax = syntax
         self.language = "Text"
@@ -61,6 +69,10 @@ pub class Document:
         folder.update()
         self.folding = self.editor.on_change(folder.update)
         self.folder = folder
+        # Color chips beside hex literals, refreshed on each edit — for themes and CSS.
+        let swatcher = SwatchHighlighter(self.editor)
+        self.swatching = self.editor.on_change(swatcher.update)
+        self.swatcher = swatcher
         self.language = language_from_path(self.path)
         if let registry = grammars:
             if let grammar = registry.grammar_for(self.path):
@@ -75,6 +87,10 @@ pub class Document:
     ## The language label for the status bar.
     pub func language_label(self) -> str:
         return self.language
+
+    ## The line-ending style shown in the pane status bar.
+    pub func line_ending(self) -> str:
+        return "CRLF" if self.crlf else "LF"
 
     ## Switch the highlighter to the grammar in `filename` (from the status-bar language menu).
     pub func set_language(self, filename: str) -> unit!:

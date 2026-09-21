@@ -1,7 +1,10 @@
 ## File presentation belongs to the editor. The explorer supplies names and kinds;
-## the UI library receives ordinary rows with no filesystem or language policy.
-from ui import IconKind, ListItem
+## the table receives styled rows — icon, git tint, unsaved emphasis, a muted line
+## count — with no filesystem or language policy of its own.
+from ui import IconKind, TableColumn, TableCell, CellAlign
+from gpu import Color
 from workspace.explorer import Entry
+from workspace.status import FileStatus, git_untracked, git_modified
 
 pub func icon(path: str) -> IconKind:
     if path.ends_with(".luc") or path.ends_with(".lucb"):
@@ -10,11 +13,40 @@ pub func icon(path: str) -> IconKind:
         return IconKind.settings
     return IconKind.file
 
-pub func present(entries: list[Entry]) -> list[ListItem]:
-    var rows: list[ListItem] = []
+## Which files earn a line count: source and text, never binaries.
+pub func countable(name: str) -> bool:
+    for ext in [".luc", ".lucb", ".toml", ".json", ".yaml", ".yml", ".md", ".txt", ".css", ".html", ".htm", ".js", ".ts", ".c", ".h", ".cpp", ".hpp", ".cc", ".py", ".sh", ".rs", ".go", ".glsl", ".metal", ".s", ".xml", ".svg"]:
+        if name.ends_with(ext):
+            return true
+    return false
+
+## The explorer's two columns: a flexible name and a fixed, right-aligned line count.
+pub func columns() -> list[TableColumn]:
+    return [
+        TableColumn(title = "Name", weight = 1.0, minimum = 80.0),
+        TableColumn(title = "LOC", width = 58.0, minimum = 44.0, align = CellAlign.right)
+    ]
+
+## Row-major cells, two per entry (name, LOC). The name carries its icon, a git tint
+## (green untracked, amber modified) and bold when the file has unsaved edits; the LOC
+## cell shows the line count in the muted comment color, blank until the scan lands.
+pub func present(entries: list[Entry], status: FileStatus, dirty: list[str], added: Color, modified: Color) -> list[TableCell]:
+    var cells: list[TableCell] = []
     for entry in entries:
         var symbol = icon(entry.name)
         if entry.directory:
             symbol = IconKind.folder_open if entry.name == ".." else IconKind.folder
-        rows.append(ListItem(entry.name, symbol))
-    return rows
+        var tint: Color? = none
+        let state = status.git_of(entry.path)
+        if state == git_untracked:
+            tint = added
+        elif state == git_modified:
+            tint = modified
+        let edited = entry.path in dirty
+        var loc_text = ""
+        if not entry.directory and countable(entry.name):
+            if let count = status.loc_of(entry.path):
+                loc_text = f"{count}"
+        cells.append(TableCell(entry.name, symbol, tint = tint, emphasis = edited))
+        cells.append(TableCell(loc_text, muted = true))
+    return cells
