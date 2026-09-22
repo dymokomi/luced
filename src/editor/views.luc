@@ -1,7 +1,8 @@
 ## Named view components expose only the controls that the workspace updates.
 ## Geometry uses font cells and text lines; continuous GPU content still fills
 ## the remaining area. Menus and toolbars share the same native actions.
-from ui import Font, Text, TextEditor, TableView, VStack, Toolbar, Menu, Button, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, ConfirmDialog, ColorEditor, Command
+from ui import Font, Text, TextEditor, TableView, VStack, Toolbar, Menu, Button, ButtonStyle, Shelf, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, ConfirmDialog, ColorEditor, Command
+from interop import Connection
 from gpu import Color
 from editor.actions import EditorActions
 from editor.file_actions import FileActions
@@ -17,6 +18,7 @@ pub class Sidebar:
     pub let body: Panel
     pub let context: ContextMenu
     let files: FileActions
+    pub let connections: list[Connection]
 
     pub func init(self, explorer: Explorer, actions: EditorActions, font: Font) -> unit!:
         let initial = FileStatus()
@@ -25,7 +27,11 @@ pub class Sidebar:
         self.context = context
         self.listing = listing
         self.files = actions.files
-        let panel = Panel("FILES", context, icon = IconKind.folder_open, minimum = Size(140.0, 100.0), closable = false)
+        # The pane's actions on its shelf: new file, new folder, refresh; delete alone at the right.
+        self.connections = []
+        let shelf = Shelf([shelf_button("file-new", actions.files.new_file, font, self.connections), shelf_button("folder-new", actions.files.new_folder, font, self.connections),
+                           shelf_button("reload", actions.files.refresh, font, self.connections), Spacer(), shelf_button("trash", actions.files.delete, font, self.connections)])
+        let panel = Panel("FILES", context, icon = IconKind.folder_open, minimum = Size(140.0, 100.0), closable = false, footer = shelf)
         panel.set_detail(paths.name(explorer.directory))
         self.body = panel
 
@@ -37,6 +43,7 @@ pub class OutputPane:
     pub let output: TextEditor
     pub let body: Panel
     pub let context: ContextMenu
+    pub let connections: list[Connection]
 
     pub func init(self, actions: EditorActions, font: Font) -> unit!:
         let output = TextEditor("Compiler and program output will appear here.\n", read_only = true, line_numbers = false, font = font, wrap = true)
@@ -44,7 +51,9 @@ pub class OutputPane:
         let context = ContextMenu(output, actions.output.all, font = font)
         self.context = context
         self.output = output
-        self.body = Panel("OUTPUT", context, icon = IconKind.terminal, minimum = Size(180.0, 60.0), closable = false)
+        self.connections = []
+        let shelf = Shelf([Spacer(), shelf_button("eraser-tool", actions.output.clear, font, self.connections)])
+        self.body = Panel("OUTPUT", context, icon = IconKind.terminal, minimum = Size(180.0, 60.0), closable = false, footer = shelf)
 
 pub class EditorView:
     pub let sidebar: Sidebar
@@ -94,3 +103,12 @@ pub class EditorView:
         let statusbar = Toolbar([status, Spacer()], font = font)
         let content = VStack([menu, panes, statusbar, palette, prompt, dialog, color], spacing = 0.0)
         self.body = ContextMenu(content, [actions.palette, actions.settings, actions.theme, actions.reload, actions.next_pane], font = font)
+
+## A pane-shelf button: 25 points square, plain, triggering `command`; its hint is the command's name.
+func shelf_button(icon: str, command: Command, font: Font, connections: list[Connection]) -> Button!:
+    let button = Button(icon = icon, font = font)
+    button.set_style(ButtonStyle.plain)
+    button.layout().set_size(25.0, 25.0)
+    connections.append(button.on_click(func () -> unit!:
+        command.trigger()))
+    return button

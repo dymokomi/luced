@@ -127,8 +127,9 @@ to all controls together; window dimensions apply at the next launch. Compiler
 paths supplied on the command line override the file.
 
 Pane header spacing uses `[layout] header_inset_cells` in `theme.toml` (default
-1.5 character cells). Header backgrounds follow `border`, `hover_border` and
-`active_border`; inactive tabs use `panel`.
+1.5 character cells) and controls round by `control_radius`. The tab strip is
+`strip`, the selected tab and pane are `panel`, each pane's bottom shelf is
+`sunken`; the shipped palette is eleusis-layout's greys and orange.
 
 Both files are validated before application. Invalid edits remain available for
 correction, with an error in the status bar and the current configuration retained.

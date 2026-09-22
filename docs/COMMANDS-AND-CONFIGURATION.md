@@ -183,12 +183,19 @@ spacing is configurable in character cells:
 [layout]
 header_inset_cells = 1.5
 caret_width = 2.0
+control_radius = 5.0
 ```
 
 `header_inset_cells` accepts 0–4 cells and follows the shared font's advance. Both
 title and body retain the same font size; changing the font updates header and
 icon geometry. `caret_width` sets the blinking text caret's thickness in points
-(1–8, default 2).
+(1–8, default 2). `control_radius` rounds buttons, menu titles and tabs (0–32
+points, default 5; 0 is square).
+
+The shipped palette follows eleusis-layout: greys with one orange. Besides the
+roles above, `[colors]` takes `strip` (the recess a tab strip sits in), `sunken`
+(field wells and each pane's bottom shelf), `raised` (menus and popovers) and
+`accent_text` (text on the accent; black on the orange).
 
 `ai.toml` configures AI models and providers. **Edit AI Settings** opens it with
 the same protections as the other files. It is created once and never rewritten,
