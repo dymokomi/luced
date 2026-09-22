@@ -20,8 +20,11 @@ with tempfile.TemporaryDirectory(prefix='luced-tests-') as temp:
     shutil.copy2(ROOT / 'tests/main.luc', project / 'src/main.luc')
     shutil.copy2(ROOT / 'tests/configuration.luc', project / 'src/configuration_tests.luc')
     shutil.copy2(ROOT / 'tests/workspace_tabs.luc', project / 'src/workspace_tab_tests.luc')
-    (project / 'luce.toml').write_text('[package]\nname = "luced_tests"\nsource = "src"\n[dependencies]\nluce_ui = ' + json.dumps(str(ROOT.parent / 'luce-ui')) + '\nluce_config = ' + json.dumps(str(ROOT.parent / 'luce-config')) + '\nluce_ai = ' + json.dumps(str(ROOT.parent / 'luce-ai')) + '\nluce_textmate = ' + json.dumps(str(ROOT.parent / 'luce-textmate')) + '\nluce_regex = ' + json.dumps(str(ROOT.parent / 'luce-regex')) + '\n')
-    (root / 'luce.toml').write_text('[package]\nname = "luced_fixture"\nsource = "."\n')
+    # The application's own manifest, with every dependency taken from the checkouts beside this one.
+    dependencies = ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str version = "%s"\n        str path = %s\n    }\n' % (name, version, json.dumps(str(ROOT.parent / name)))
+                           for name, version in [('luce-ui', '^0.1.0'), ('luce-config', '^0.1.0'), ('luce-ai', '^0.1.0'), ('luce-textmate', '^0.2.0'), ('luce-regex', '^0.1.0')])
+    (project / 'package.prisma').write_text('#prisma 4.0\ndef package "luced-tests" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "src/main.luc"\n' + dependencies + '}\n')
+    (root / 'package.prisma').write_text('#prisma 4.0\ndef package "luced-fixture" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "main.luc"\n}\n')
     binary = root / ('tests.exe' if os.name == 'nt' else 'tests')
     for flags in [['--native', '--opt', '0'], ['--native', '--opt', '2']]:
         subprocess.run([str(a.luce.resolve()), 'build', str(project / 'src/main.luc'), *flags, '-o', str(binary)], env=env, check=True, timeout=180)
