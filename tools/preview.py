@@ -31,7 +31,7 @@ a.output.resolve().parent.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='luced-preview-') as temporary:
     work = Path(temporary)
     shutil.copytree(ROOT / 'src', work / 'src')
-    dependencies = [('luce-ui', '^0.1.0'), ('luce-config', '^0.1.0'), ('luce-ai', '^0.1.0'), ('luce-textmate', '^0.2.0'), ('luce-regex', '^0.1.0')]
+    dependencies = [('luce-ui', '^0.5.0'), ('luce-config', '^0.1.0'), ('luce-ai', '^0.1.0'), ('luce-textmate', '^0.2.0'), ('luce-regex', '^0.1.0')]
     manifest = '#prisma 4.0\ndef package "luced-preview" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "src/main.luc"\n'
     manifest += ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str version = "%s"\n        str path = %s\n    }\n' % (name, version, json.dumps(str(ROOT.parent / name))) for name, version in dependencies)
     (work / 'package.prisma').write_text(manifest + '}\n')
