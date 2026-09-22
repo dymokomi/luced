@@ -12,7 +12,7 @@ pub class Appearance:
 
     pub func init(self, source: str = "") -> unit!:
         let table = Table(source)
-        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.button_hover", "colors.pressed", "colors.menu", "colors.menu_hover", "colors.menu_selection", "colors.border", "colors.active_border", "colors.gutter", "colors.vcs_added", "colors.vcs_modified", "colors.shadow", "popup.shadow_offset", "popup.shadow_opacity", "layout.header_inset_cells", "layout.caret_width", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.section", "syntax.number", "syntax.type", "syntax.other"])
+        table.check_keys(["colors.background", "colors.panel", "colors.foreground", "colors.muted", "colors.selection", "colors.accent", "colors.button", "colors.button_hover", "colors.pressed", "colors.menu", "colors.menu_hover", "colors.menu_selection", "colors.border", "colors.active_border", "colors.gutter", "colors.vcs_added", "colors.vcs_modified", "colors.shadow", "colors.strip", "colors.sunken", "colors.raised", "colors.accent_text", "popup.shadow_offset", "popup.shadow_opacity", "layout.header_inset_cells", "layout.caret_width", "layout.control_radius", "syntax.keyword", "syntax.string", "syntax.comment", "syntax.section", "syntax.number", "syntax.type", "syntax.other"])
         var theme = Theme()
         theme.background = read_color(table, "colors.background", theme.background)
         theme.panel = read_color(table, "colors.panel", theme.panel)
@@ -32,10 +32,15 @@ pub class Appearance:
         theme.vcs_added = read_color(table, "colors.vcs_added", theme.vcs_added)
         theme.vcs_modified = read_color(table, "colors.vcs_modified", theme.vcs_modified)
         theme.shadow = read_color(table, "colors.shadow", theme.shadow)
+        theme.strip = read_color(table, "colors.strip", theme.strip)
+        theme.sunken = read_color(table, "colors.sunken", theme.sunken)
+        theme.raised = read_color(table, "colors.raised", theme.raised)
+        theme.accent_text = read_color(table, "colors.accent_text", theme.accent_text)
         theme.shadow_offset = table.number("popup.shadow_offset", theme.shadow_offset, 0.0, 32.0)
         theme.shadow_opacity = table.number("popup.shadow_opacity", theme.shadow_opacity, 0.0, 1.0)
         theme.header_inset_cells = table.number("layout.header_inset_cells", theme.header_inset_cells, 0.0, 4.0)
         theme.caret_width = table.number("layout.caret_width", theme.caret_width, 1.0, 8.0)
+        theme.control_radius = table.number("layout.control_radius", theme.control_radius, 0.0, 32.0)
         var syntax: map[str, Color] = {}
         syntax["keyword"] = read_color(table, "syntax.keyword", Color(0.55, 0.26, 0.65))
         syntax["string"] = read_color(table, "syntax.string", Color(0.39, 0.58, 0.28))
@@ -64,4 +69,4 @@ func read_color(table: Table, key: str, fallback: Color) -> Color!:
     return Color(components[0], components[1], components[2])
 
 pub func defaults() -> str:
-    return "# luced theme. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#202020\"\npanel = \"#2f2f2f\"\nforeground = \"#D7DEEA\"\nmuted = \"#757575\"\nselection = \"#323232\"\naccent = \"#ef963e\"\n\nbutton = \"#393b3b\"\nbutton_hover = \"#656565\"\n\nmenu = \"#393b3b\"\nmenu_hover = \"#656565\"\nmenu_selection = \"#d27d2b\"\n\npressed = \"#ef963e\"\nborder = \"#424443\"\nactive_border = \"#908e8f\"\ngutter = \"#323232\"\nvcs_added = \"#6FCF7F\"\nvcs_modified = \"#E0B341\"\nshadow = \"#000000\"\n\n[popup]\nshadow_offset = 4.0\nshadow_opacity = 0.35\n\n[layout]\nheader_inset_cells = 1.5\ncaret_width = 2.0\n\n[syntax]\nkeyword = \"#ff7959\"\nstring = \"#76715a\"\ncomment = \"#799997\"\nsection = \"#A9CFC9\"\nnumber = \"#8eadff\"\ntype = \"#61c2b7\"\nother = \"#bd82d3\"\n"
+    return "# luced theme, after eleusis-layout: greys with one orange. Colors are sRGB hex; save to apply immediately.\n\n[colors]\nbackground = \"#1a1a1a\"\npanel = \"#323232\"\nstrip = \"#262626\"\nsunken = \"#292929\"\nraised = \"#2e2e2e\"\nforeground = \"#d9d9d9\"\nmuted = \"#8c8c8c\"\nselection = \"#e7a03f\"\naccent = \"#e7a03f\"\naccent_text = \"#000000\"\n\nbutton = \"#292929\"\nbutton_hover = \"#3a3a3a\"\npressed = \"#4a4a4a\"\n\nmenu = \"#2e2e2e\"\nmenu_hover = \"#3a3a3a\"\nmenu_selection = \"#e7a03f\"\n\nborder = \"#3a3a3a\"\nactive_border = \"#969696\"\ngutter = \"#262626\"\nvcs_added = \"#6FCF7F\"\nvcs_modified = \"#E0B341\"\nshadow = \"#000000\"\n\n[popup]\nshadow_offset = 0.0\nshadow_opacity = 0.0\n\n[layout]\nheader_inset_cells = 1.5\ncaret_width = 2.0\ncontrol_radius = 5.0\n\n[syntax]\nkeyword = \"#ff7959\"\nstring = \"#76715a\"\ncomment = \"#799997\"\nsection = \"#A9CFC9\"\nnumber = \"#8eadff\"\ntype = \"#61c2b7\"\nother = \"#bd82d3\"\n"
