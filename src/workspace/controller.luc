@@ -3,6 +3,8 @@
 from ui import Application, Text, TextEditor, TableView, Panel, ContextMenu, ConfirmDialog, Theme
 from gpu import Color
 from workspace.explorer import Explorer
+from workspace.project import Project
+from process import Command
 from workspace.editors import Editors
 from workspace.document import Document
 from workspace.status import FileStatus
@@ -19,6 +21,10 @@ import editor.file_items as file_items
 pub class Workspace:
     let app: Application
     let explorer: Explorer
+    pub let project: Project
+    var creating: Command? = none
+    var creating_root: str = ""
+    var creating_kind: str = ""
     let listing: TableView
     let directory_header: Panel
     let status: Text
@@ -37,6 +43,10 @@ pub class Workspace:
                   status: Text, runner: Runner, editors: Editors, dialog: ConfirmDialog, theme: Theme):
         self.app = app
         self.explorer = explorer
+        self.project = Project(luc_program())
+        # Status is not wired yet; a project that cannot start describing itself just stays unloaded.
+        self.project.begin(explorer.directory) catch failure:
+            recover ()
         self.listing = listing
         self.directory_header = directory_header
         self.status = status
@@ -136,6 +146,38 @@ pub class Workspace:
         self.refresh_files()
         self.report(("Moved " if move else "Copied ") + paths.name(target))
 
+    ## `luc new <name> --<kind>` in `directory`; the project opens when luc finishes.
+    pub func create_project(self, directory: str, name: str, kind: str) -> unit!:
+        if name == "" or "/" in name or name.starts_with("."):
+            error(ui.invalid, "A project name is a plain directory name.")
+        if self.creating != none:
+            error(ui.invalid, "A project is already being created.")
+        self.creating = Command(luc_program(), ["new", name, "--" + kind], directory = directory)
+        self.creating_root = paths.join(directory, name)
+        self.creating_kind = kind
+        self.report(f"Creating {kind} {name}…")
+
+    func poll_creation(self) -> unit!:
+        let command = self.creating else return
+        if not command.is_finished():
+            return
+        let code = command.exit_code() else -1
+        let out = command.output()
+        let failure = command.error_message()
+        command.close()
+        self.creating = none
+        if code != 0:
+            self.report(out.trim() if out.trim() != "" else (failure if failure != "" else "luc new failed"))
+            return
+        let root = self.creating_root
+        self.project.begin(root)
+        self.explorer.open(root)
+        self.begin_status()
+        self.listing.select(-1)
+        self.rebuild()
+        self.project_header()
+        self.report(f"Created {self.creating_kind} {paths.name(root)}")
+
     pub func create_file(self, directory: str, name: str) -> unit!:
         let path = operations.create_file(directory, name)
         self.refresh_files()
@@ -180,16 +222,23 @@ pub class Workspace:
             return
         let entry = self.explorer.entries[index]
         if entry.directory:
+            self.project.begin(entry.path)
             self.explorer.open(entry.path)
             self.begin_status()
             self.listing.select(-1)
             self.rebuild()
-            self.directory_header.set_detail(paths.name(self.explorer.directory))
+            self.project_header()
         else:
             self.open(entry.path)
 
     pub func open(self, path: str) -> unit!:
         self.editors.open(path)
+
+    func project_header(self) -> unit!:
+        if self.project.loaded():
+            self.directory_header.set_detail(f"{self.project.name} · {self.project.kind}")
+        else:
+            self.directory_header.set_detail(paths.name(self.explorer.directory))
 
     pub func new_tab(self) -> unit!:
         self.editors.new_untitled()
@@ -243,6 +292,11 @@ pub class Workspace:
         elif name == "build" or name == "run":
             for open_document in self.editors.documents():
                 open_document.save()
+            # Inside a project the whole project builds through luc; a loose file builds alone.
+            if self.project.loaded():
+                self.runner.build_project(luc_program(), self.project.root, name == "run", self.project.language)
+                self.changed()
+                return
             if not document.path.ends_with(".luc") and not document.path.ends_with(".lucb"):
                 error(ui.invalid, "Select a Luce or Luce Base source file to build.")
             self.runner.build(document.path, name == "run")
@@ -318,6 +372,11 @@ pub class Workspace:
 
     func tick(self, elapsed: float) -> unit!:
         self.runner.poll()
+        self.poll_creation()
+        if self.project.poll():
+            self.explorer.hidden_paths = self.project.absolute_generated()
+            self.refresh_files()
+            self.project_header()
         if not self.status_started:
             self.status_started = true
             self.begin_status()
@@ -333,7 +392,10 @@ pub class Workspace:
         self.message_time -= elapsed
         if self.message_time > 0.0:
             return
-        let text = self.runner.status
+        # The idle status names the project this editor is in: "luced 0.1.1 · application · luce".
+        var text = self.runner.status
+        if text == "Ready" and self.project.loaded():
+            text = self.project.label()
         if text != self.status_text:
             self.status.set_text(text)
             self.status_text = text
@@ -341,4 +403,14 @@ pub class Workspace:
     pub func close(self):
         self.file_status.close()
         self.runner.close()
+        self.project.close()
+        if let command = self.creating:
+            command.close()
+            self.creating = none
         self.editors.close()
+
+## FILES shows the project it is in ("luced · application") when there is one, else the
+## directory name.
+## The luc that goes with this editor: beside the compilers it was given, else on PATH.
+func luc_program() -> str:
+    return "luc"

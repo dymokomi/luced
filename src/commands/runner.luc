@@ -33,6 +33,22 @@ pub class Runner:
         self.luce = luce
         self.base = base
 
+    ## Build or run a whole project through luc, in its root. luc's own output, including
+    ## the compiler's diagnostics, streams into the output pane.
+    pub func build_project(self, luc: str, root: str, run: bool, language: str) -> unit!:
+        if self.busy():
+            self.status = "A command is already running"
+            return
+        self.directory = root
+        let verb = "run" if run else "build"
+        self.prefix = f"$ luc {verb}\n\n"
+        self.display(self.prefix)
+        # luc finds the compilers on PATH unless told; pass the ones this editor was given.
+        self.command = Command(luc, [verb], directory = root, environment = ["LUCE_BASE=" + self.base, "LUCE=" + self.luce])
+        self.next_program = none
+        self.revision = -1
+        self.status = "Running..." if run else "Building..."
+
     pub func build(self, source: str, run: bool) -> unit!:
         if self.busy():
             self.status = "A command is already running"

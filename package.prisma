@@ -1,7 +1,7 @@
 #prisma 4.0
 def package "luced" {
     str owner = "dymokomi"
-    str version = "0.1.1"
+    str version = "0.1.2"
     str kind = "application"
     str language = "luce"
     str description = "A small native code editor written in Luce, built with the luce-ui Base library. It has a file explorer, editable monospace source pane, Luce/Luce Base syntax highlighting and folding, and a compiler/program output pane."

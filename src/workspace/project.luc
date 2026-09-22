@@ -1,0 +1,140 @@
+## A Luce project, as `luc info` describes it. luced never reads package.prisma itself:
+## it asks luc, so both agree on what a project is. Loading is a background command,
+## polled like the other scans, so opening a folder never blocks the UI.
+from process import Command
+import files
+import workspace.paths as paths
+
+pub struct Dependency:
+    pub let name: str
+    pub let owner: str
+    pub let version: str
+    ## A local checkout the author works against, or empty for a registry release.
+    pub let path: str
+
+## The nearest directory at or above `directory` holding a package.prisma, or none.
+pub func root_of(directory: str) -> str?:
+    var candidate = files.absolute_path(directory) catch failure:
+        return none
+    var steps = 0
+    while steps < 64:
+        steps += 1
+        let kind = files.path_kind(paths.join(candidate, "package.prisma")) catch failure:
+            recover files.FileKind.unknown
+        if kind == files.FileKind.regular:
+            return candidate
+        let parent = paths.parent(candidate)
+        if parent == candidate:
+            return none
+        candidate = parent
+    return none
+
+pub class Project:
+    pub var root: str = ""
+    pub var name: str = ""
+    pub var kind: str = ""
+    pub var language: str = ""
+    pub var version: str = ""
+    pub var entry: str = ""
+    pub var source: str = "src"
+    pub var dependencies: list[Dependency]
+    ## name -> exact version from luc.lock
+    pub var locked: map[str, str]
+    ## Paths luc writes, relative to the root, that the explorer hides.
+    pub var generated: list[str]
+    var pending: Command? = none
+    var luc: str = "luc"
+
+    pub func init(self, luc: str):
+        self.luc = luc
+        self.dependencies = []
+        self.locked = {}
+        self.generated = []
+
+    pub func loaded(self) -> bool:
+        return self.root != ""
+
+    ## Start describing the project that contains `directory`; clears when there is none.
+    pub func begin(self, directory: str) -> unit!:
+        if let command = self.pending:
+            command.close()
+            self.pending = none
+        let found = root_of(directory)
+        if found == none:
+            self.clear()
+            return
+        let root = found else return
+        if root == self.root:
+            return
+        self.pending = Command(self.luc, ["info"], directory = root)
+
+    func clear(self):
+        self.root = ""
+        self.name = ""
+        self.kind = ""
+        self.language = ""
+        self.version = ""
+        self.entry = ""
+        self.dependencies = []
+        self.locked = {}
+        self.generated = []
+
+    ## Collect a finished `luc info`. True when the project changed.
+    pub func poll(self) -> bool!:
+        let command = self.pending else return false
+        if not command.is_finished():
+            return false
+        let code = command.exit_code() else -1
+        let text = command.output()
+        command.close()
+        self.pending = none
+        if code != 0:
+            self.clear()
+            return true
+        self.clear()
+        for line in text.split("\n"):
+            let parts = line.split("\t")
+            if parts.length < 2:
+                continue
+            let key = parts[0]
+            if key == "root": self.root = parts[1]
+            elif key == "name": self.name = parts[1]
+            elif key == "kind": self.kind = parts[1]
+            elif key == "language": self.language = parts[1]
+            elif key == "version": self.version = parts[1]
+            elif key == "entry": self.entry = parts[1]
+            elif key == "source": self.source = parts[1]
+            elif key == "generated": self.generated.append(parts[1])
+            elif key == "dependency" and parts.length >= 5:
+                self.dependencies.append(Dependency(parts[1], parts[2], parts[3], parts[4]))
+            elif key == "locked" and parts.length >= 3:
+                self.locked[parts[1]] = parts[2]
+        return true
+
+    ## Whether the explorer should hide `path` (absolute) as something luc generates.
+    pub func hides(self, path: str) -> bool:
+        if not self.loaded():
+            return false
+        for relative in self.generated:
+            if path == paths.join(self.root, relative):
+                return true
+        return false
+
+    ## The generated paths as absolute paths, for the explorer.
+    pub func absolute_generated(self) -> list[str]:
+        var result: list[str] = []
+        if self.loaded():
+            for relative in self.generated:
+                result.append(paths.join(self.root, relative))
+        return result
+
+    ## A one-line label for the status bar: "luced 0.1.1 · application · luce".
+    pub func label(self) -> str:
+        if not self.loaded():
+            return ""
+        return f"{self.name} {self.version} · {self.kind} · {self.language}"
+
+    pub func close(self):
+        if let command = self.pending:
+            command.close()
+            self.pending = none

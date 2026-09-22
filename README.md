@@ -20,6 +20,20 @@ Saves replace files atomically, preserve existing permissions and CRLF line
 endings, and refuse to overwrite changes detected on disk. Build and Run use
 cancellable background commands so the UI stays responsive.
 
+## Projects
+
+Open luced on a directory that holds a `package.prisma` and it is in project mode:
+the FILES pane hides what `luc` generates (`build/`, `.luc/`, `luce.toml`), the
+status bar names the project (`luced 0.1.1 · application · luce`), and Build and
+Run go through `luc` in the project root, so the whole project builds with its
+dependencies rather than the selected file alone. Outside a project, Build and Run
+compile the selected file as before.
+
+The FILES pane's menu creates projects: New Package (a library), New Tool (a
+terminal program) or New Application (a desktop window). Each runs `luc new` with
+that kind and opens the result. luced never reads `package.prisma` itself; it asks
+`luc info`, so the editor and the tool always agree on what a project is.
+
 ## Build and open
 
 Keep `luced`, `luce-ui`, `luce`, and `luce-base` as sibling checkouts. The tested

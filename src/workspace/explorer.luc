@@ -11,9 +11,12 @@ pub class Explorer:
     pub var directory: str
     pub var entries: list[Entry]
     pub var show_hidden: bool = false
+    ## Absolute paths a project marks as generated; hidden unless show_hidden.
+    pub var hidden_paths: list[str]
 
     pub func init(self, directory: str) -> unit!:
         self.entries = []
+        self.hidden_paths = []
         self.show_hidden = false
         self.directory = files.absolute_path(directory)
         self.open(self.directory)
@@ -30,6 +33,8 @@ pub class Explorer:
             if name.starts_with(".") and not self.show_hidden:
                 continue
             let full = paths.join(absolute, name)
+            if full in self.hidden_paths and not self.show_hidden:
+                continue
             let kind = files.path_kind(full) catch failure: continue
             if kind == FileKind.directory:
                 directories.append(Entry(name, full, true))

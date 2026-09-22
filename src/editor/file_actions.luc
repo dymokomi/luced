@@ -12,6 +12,9 @@ import workspace.paths as paths
 pub class FileActions:
     pub let new_file: Command
     pub let new_folder: Command
+    pub let new_package: Command
+    pub let new_tool: Command
+    pub let new_application: Command
     pub let cut: Command
     pub let copy: Command
     pub let paste: Command
@@ -34,6 +37,9 @@ pub class FileActions:
     pub func init(self) -> unit!:
         let new_file = Command("New File…", id = "new_file")
         let new_folder = Command("New Folder…", id = "new_folder")
+        let new_package = Command("New Package…", id = "new_package")
+        let new_tool = Command("New Tool…", id = "new_tool")
+        let new_application = Command("New Application…", id = "new_application")
         let cut = Command("Cut", id = "cut_file")
         let copy = Command("Copy", id = "copy_file")
         let paste = Command("Paste", id = "paste_file")
@@ -44,6 +50,9 @@ pub class FileActions:
         let show_hidden = Command("Show Hidden Files", id = "show_hidden")
         self.new_file = new_file
         self.new_folder = new_folder
+        self.new_package = new_package
+        self.new_tool = new_tool
+        self.new_application = new_application
         self.cut = cut
         self.copy = copy
         self.paste = paste
@@ -53,7 +62,7 @@ pub class FileActions:
         self.refresh = refresh
         self.show_hidden = show_hidden
         self.separator = Command("", divider = true)
-        self.all = [new_file, new_folder, cut, copy, paste, copy_path, rename, delete, refresh, show_hidden]
+        self.all = [new_file, new_folder, new_package, new_tool, new_application, cut, copy, paste, copy_path, rename, delete, refresh, show_hidden]
 
     ## Give the file actions the session journal, so the right-click menu and each file operation
     ## leave a breadcrumb before handing off to the UI or the filesystem.
@@ -68,6 +77,7 @@ pub class FileActions:
         self.workspace = workspace
         self.prompt = prompt
         return [self.new_file.on_trigger(self.create_file), self.new_folder.on_trigger(self.create_folder),
+            self.new_package.on_trigger(self.create_package), self.new_tool.on_trigger(self.create_tool), self.new_application.on_trigger(self.create_application),
             self.cut.on_trigger(self.cut_entry), self.copy.on_trigger(self.copy_entry),
             self.paste.on_trigger(self.paste_entry), self.copy_path.on_trigger(self.copy_filename),
             self.rename.on_trigger(self.rename_file), self.delete.on_trigger(self.delete_file),
@@ -82,7 +92,7 @@ pub class FileActions:
         return [self.new_file, self.new_folder, self.separator, self.paste, self.copy_path, self.separator, self.rename, self.delete]
 
     pub func background_menu(self) -> list[Command]:
-        return [self.new_file, self.new_folder, self.separator, self.paste, self.separator, self.show_hidden, self.refresh]
+        return [self.new_file, self.new_folder, self.separator, self.new_package, self.new_tool, self.new_application, self.separator, self.paste, self.separator, self.show_hidden, self.refresh]
 
     ## Refresh enabled states, then choose the menu for what was clicked: a file,
     ## a folder, or empty space (also the parent row, which selects nothing).
@@ -122,6 +132,16 @@ pub class FileActions:
     func create_folder(self) -> unit!:
         self.create("folder")
 
+    # A new project of each kind: luc creates the directory and its starter files.
+    func create_package(self) -> unit!:
+        self.create("package")
+
+    func create_tool(self) -> unit!:
+        self.create("tool")
+
+    func create_application(self) -> unit!:
+        self.create("application")
+
     func create(self, operation: str) -> unit!:
         let workspace = self.workspace else return
         let prompt = self.prompt else return
@@ -131,7 +151,12 @@ pub class FileActions:
         if let entry = workspace.selected_entry():
             if entry.directory:
                 self.target = entry.path
-        prompt.open("New File" if operation == "file" else "New Folder", accept = "Create")
+        var title = "New Folder"
+        if operation == "file": title = "New File"
+        elif operation == "package": title = "New Package (a library other projects add)"
+        elif operation == "tool": title = "New Tool (a terminal program)"
+        elif operation == "application": title = "New Application (a desktop window)"
+        prompt.open(title, accept = "Create")
 
     func cut_entry(self) -> unit!:
         let workspace = self.workspace else return
@@ -215,6 +240,8 @@ pub class FileActions:
             workspace.create_file(target, text)
         elif operation == "folder":
             workspace.create_folder(target, text)
+        elif operation == "package" or operation == "tool" or operation == "application":
+            workspace.create_project(target, text, operation)
         elif operation == "rename":
             workspace.rename_entry(target, text)
         elif operation == "delete":
