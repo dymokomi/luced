@@ -3,6 +3,7 @@
 import argparse
 import shutil
 import json
+import re
 import os
 from pathlib import Path
 import subprocess
@@ -20,9 +21,10 @@ with tempfile.TemporaryDirectory(prefix='luced-tests-') as temp:
     shutil.copy2(ROOT / 'tests/main.luc', project / 'src/main.luc')
     shutil.copy2(ROOT / 'tests/configuration.luc', project / 'src/configuration_tests.luc')
     shutil.copy2(ROOT / 'tests/workspace_tabs.luc', project / 'src/workspace_tab_tests.luc')
-    # The application's own manifest, with every dependency taken from the checkouts beside this one.
+    # The application's own dependencies, each taken from the checkout beside this one.
+    manifest = (ROOT / 'package.prisma').read_text()
     dependencies = ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str version = "%s"\n        str path = %s\n    }\n' % (name, version, json.dumps(str(ROOT.parent / name)))
-                           for name, version in [('luce-ui', '^0.5.0'), ('luce-config', '^0.1.0'), ('luce-ai', '^0.1.0'), ('luce-textmate', '^0.2.0'), ('luce-regex', '^0.1.0')])
+                           for name, version in re.findall(r'def dependency "([^"]+)" \{\s*str owner = "[^"]*"\s*str version = "([^"]+)"', manifest))
     (project / 'package.prisma').write_text('#prisma 4.0\ndef package "luced-tests" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "src/main.luc"\n' + dependencies + '}\n')
     (root / 'package.prisma').write_text('#prisma 4.0\ndef package "luced-fixture" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "main.luc"\n}\n')
     binary = root / ('tests.exe' if os.name == 'nt' else 'tests')
