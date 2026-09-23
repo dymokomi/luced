@@ -1,5 +1,5 @@
 ## Highlighting driven by a TextMate grammar. On any change it re-tokenizes the whole document
-## through the luce-base tokenizer — fast enough now to do wholesale — and colours each scoped
+## through the luce-base tokenizer — fast enough now to do wholesale — and colors each scoped
 ## span through the theme. A wall-clock budget inside the tokenizer leaves a very large file's
 ## tail plain rather than blocking on open. Folding for grammar languages is a later pass; this
 ## module publishes highlights only.

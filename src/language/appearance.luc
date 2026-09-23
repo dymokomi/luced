@@ -35,9 +35,9 @@ pub class SyntaxTheme:
             return self.type_color
         return self.other_color
 
-    ## A TextMate scope resolves to one of the theme's colours by its leading segments, or to
+    ## A TextMate scope resolves to one of the theme's colors by its leading segments, or to
     ## none — leave the text at the editor's foreground — for base or structural scopes. This
-    ## lets any grammar colour against the same six-colour palette; richer selector matching can
+    ## lets any grammar color against the same six-color palette; richer selector matching can
     ## come later without changing callers.
     pub func color_for_scope(self, scope: str) -> Color?:
         if scope.starts_with("comment.section"):
@@ -48,7 +48,7 @@ pub class SyntaxTheme:
             return self.string_color
         if scope.starts_with("constant.numeric"):
             return self.number_color
-        # Prose markup (Markdown): headings and emphasis stand out; code is string-coloured, list
+        # Prose markup (Markdown): headings and emphasis stand out; code is string-colored, list
         # bullets numeric, block quotes muted, links typed. Placed before the generic entity/keyword
         # rules so heading text (entity.name.section) reads as a heading rather than a type.
         if scope.starts_with("markup.heading") or scope.starts_with("entity.name.section") or scope.starts_with("punctuation.definition.heading"):
@@ -71,7 +71,7 @@ pub class SyntaxTheme:
         if scope.starts_with("keyword.control.directive"):
             return self.type_color
         # Built-in type names (`storage.type`: i64, u8, str, C's int/char, …) take the
-        # type colour, distinct from keywords. Type-declaring keywords — `function` in
+        # type color, distinct from keywords. Type-declaring keywords — `function` in
         # JS, `class`/`struct` where a grammar tags them storage.type — stay keyword.
         if scope.starts_with("storage.type.function") or scope.starts_with("storage.type.class") or scope.starts_with("storage.type.struct") or scope.starts_with("storage.type.namespace"):
             return self.keyword_color

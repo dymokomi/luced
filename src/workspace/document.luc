@@ -48,7 +48,7 @@ pub class Document:
 
     ## Connect the highlighter that fits the current path: a grammar from the set when one claims
     ## the extension, otherwise the built-in Luce lexer for `.luc`/`.lucb`, otherwise nothing.
-    ## Every language uses the same two passes: a TextMate grammar for colour and indentation-based
+    ## Every language uses the same two passes: a TextMate grammar for color and indentation-based
     ## folding. No file type has its own highlighter — one system, from `.luc` to `.cpp`.
     func attach(self, syntax: SyntaxTheme?, grammars: GrammarSet?) -> unit!:
         if let connection = self.highlighting: connection.disconnect()
