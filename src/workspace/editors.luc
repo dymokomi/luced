@@ -42,6 +42,9 @@ pub class Editors:
         self.connections = []
         self.connections.append(dock.on_select(self.selected))
         self.connections.append(dock.on_add(self.add_requested))
+        # The dock's + offers a new editor (a tab, or split beside the group);
+        # editors carry no catalog id, so each pick makes another.
+        dock.set_catalog(["editor"], ["New Editor"])
         self.connections.append(dock.on_close(self.removed))
         dock.set_close_handler(self.can_close)
         discard(self.create(anchor, DockPosition.top))

@@ -1,7 +1,7 @@
 #prisma 4.0
 def package "luced" {
     str owner = "dymokomi"
-    str version = "0.1.4"
+    str version = "0.1.5"
     str kind = "application"
     str language = "luce"
     str description = "A small native code editor written in Luce, built with the luce-ui Base library. It has a file explorer, editable monospace source pane, Luce/Luce Base syntax highlighting and folding, and a compiler/program output pane."
@@ -15,55 +15,55 @@ def package "luced" {
 
     def dependency "luce-ui" {
         str owner = "dymokomi"
-        str version = "^0.5.0"
+        str version = "^0.8.6"
         str path = "../luce-ui"
     }
 
     def dependency "luce-config" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.1.4"
         str path = "../luce-config"
     }
 
     def dependency "luce-ai" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.1.4"
         str path = "../luce-ai"
     }
 
     def dependency "luce-textmate" {
         str owner = "dymokomi"
-        str version = "^0.2.0"
+        str version = "^0.2.5"
         str path = "../luce-textmate"
     }
 
     def dependency "luce-regex" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.2.2"
         str path = "../luce-regex"
     }
 
     def dependency "luce-std" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.1.4"
         str path = "../luce-std"
     }
 
     def dependency "luce-window" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.1.6"
         str path = "../luce-window"
     }
 
     def dependency "luce-gpu" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.1.16"
         str path = "../luce-gpu"
     }
 
     def dependency "luce-clipboard" {
         str owner = "dymokomi"
-        str version = "^0.1.0"
+        str version = "^0.2.1"
         str path = "../luce-clipboard"
     }
 }

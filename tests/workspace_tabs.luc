@@ -48,6 +48,9 @@ pub func workspace_tabs(root: str, luce: str, base: str) -> unit!:
     assert(files.read_text(first_path) == "let alpha = 1\n")
     let plus = editor.view.dock.add_bounds(second_panel)
     click(editor, root_bounds.x + plus.x + plus.width * 0.5, root_bounds.y + plus.y + 5.0)
+    # The + menu: New Editor, then Split Right…, whose list docks the pick beside the group.
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.down))
+    editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.enter))
     editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.enter))
     assert(editor.view.dock.panel_count() == 5 and editor.view.dock.group_count() == 4)
     let empty = editor.workspace.current_panel() else error(files.failed, "split did not create an editor")
