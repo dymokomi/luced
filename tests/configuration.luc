@@ -4,7 +4,7 @@ from configuration.store import Store
 from config import AiConfig
 from editor.application import Editor
 from editor.options import Options
-from ui import Event
+from ui import Event, default_font_size
 from input import EventKind, Key
 import configuration.settings as settings
 import configuration.theme as theme
@@ -16,7 +16,7 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     let directory = paths.join(root, "configuration")
     let store = Store(directory)
     let original = store.read_settings()
-    assert(Settings(original).font_size == 14.0)
+    assert(Settings(original).font_size == default_font_size)
     assert(Appearance(store.read_theme()).theme.gutter != Appearance().theme.background)
     # The default ai.toml exists and leaves every mode unset.
     assert(not AiConfig(store.read_ai()).ready("ask"))
