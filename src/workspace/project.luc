@@ -1,8 +1,8 @@
 ## A Luce project, as `luc info` describes it. luced never reads package.prisma itself:
 ## it asks luc, so both agree on what a project is. Loading is a background command,
 ## polled like the other scans, so opening a folder never blocks the UI.
-from process import Command
-import files
+from luce_std.process import Command
+import luce_std.files
 import workspace.paths as paths
 
 pub struct Dependency:

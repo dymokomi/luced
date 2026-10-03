@@ -1,5 +1,5 @@
-from toml import Table
-import ui
+from luce_config.toml import Table
+import luce_ui.ui
 
 pub class Settings:
     pub let font_family: str

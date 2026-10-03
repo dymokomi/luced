@@ -1,10 +1,10 @@
 ## Application coordination stays in Luce. Native controls expose user intent;
 ## this controller handles workspace navigation, dirty files and command status.
-from ui import Application, Text, TextEditor, TableView, Panel, ContextMenu, ConfirmDialog, Theme
-from gpu import Color
+from luce_ui.ui import Application, Text, TextEditor, TableView, Panel, ContextMenu, ConfirmDialog, Theme
+from luce_gpu.gpu import Color
 from workspace.explorer import Explorer
 from workspace.project import Project
-from process import Command
+from luce_std.process import Command
 from workspace.editors import Editors
 from workspace.document import Document
 from workspace.status import FileStatus
@@ -14,8 +14,8 @@ from language.grammars import GrammarSet
 from workspace.explorer import Entry
 import workspace.operations as operations
 import workspace.paths as paths
-import ui
-import files
+import luce_ui.ui
+import luce_std.files
 import editor.file_items as file_items
 
 pub class Workspace:

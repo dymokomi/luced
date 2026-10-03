@@ -3,7 +3,7 @@
 from editor.options import Options
 from editor.application import Editor
 import workspace.paths as paths
-import files
+import luce_std.files
 
 pub func main(arguments: list[str]) -> int!:
     let options = Options(arguments)

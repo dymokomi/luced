@@ -1,10 +1,10 @@
 ## Configured hex colors are sRGB; standard gpu colors use linear components.
-from ui import Theme
-from gpu import Color
+from luce_ui.ui import Theme
+from luce_gpu.gpu import Color
 from language.appearance import SyntaxTheme
-from toml import Table
-import math
-import ui
+from luce_config.toml import Table
+import luce_std.math
+import luce_ui.ui
 
 pub class Appearance:
     pub let theme: Theme

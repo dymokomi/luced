@@ -3,9 +3,9 @@
 from configuration.store import Store
 from configuration.settings import Settings
 from configuration.theme import Appearance
-from config import AiConfig
+from luce_ai.config import AiConfig
 from editor.options import Options
-from ui import Application, Font, Layout
+from luce_ui.ui import Application, Font, Layout
 from workspace.controller import Workspace
 from commands.runner import Runner
 

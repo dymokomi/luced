@@ -1,9 +1,9 @@
 ## Named view components expose only the controls that the workspace updates.
 ## Geometry uses font cells and text lines; continuous GPU content still fills
 ## the remaining area. Menus and toolbars share the same native actions.
-from ui import Font, Text, TextEditor, TableView, VStack, Toolbar, Menu, Button, ButtonStyle, Shelf, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, ConfirmDialog, ColorEditor, Command
+from luce_ui.ui import Font, Text, TextEditor, TableView, VStack, Toolbar, Menu, Button, ButtonStyle, Shelf, Spacer, Size, Panel, IconKind, DStack, DockPosition, ContextMenu, CommandPalette, TextPrompt, ConfirmDialog, ColorEditor, Command
 from interop import Connection
-from gpu import Color
+from luce_gpu.gpu import Color
 from editor.actions import EditorActions
 from editor.file_actions import FileActions
 from workspace.explorer import Explorer

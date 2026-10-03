@@ -1,8 +1,8 @@
 ## File presentation belongs to the editor. The explorer supplies names and kinds;
 ## the table receives styled rows — icon, git tint, unsaved emphasis, a muted line
 ## count — with no filesystem or language policy of its own.
-from ui import IconKind, TableColumn, TableCell, CellAlign
-from gpu import Color
+from luce_ui.ui import IconKind, TableColumn, TableCell, CellAlign
+from luce_gpu.gpu import Color
 from workspace.explorer import Entry
 from workspace.status import FileStatus, git_untracked, git_modified
 

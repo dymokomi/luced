@@ -2,7 +2,7 @@
 ## are produced by short-lived child processes (`git`, `wc`) polled from the frame
 ## loop, so opening a folder never blocks the UI on the filesystem. Results are keyed
 ## by absolute path; presentation (colors, columns) belongs to the editor, not here.
-from process import Command
+from luce_std.process import Command
 
 ## A path's version-control state, for the explorer's name color. Plain integer codes
 ## rather than an enum, which Luce reserves for its Base tier.

@@ -1,5 +1,5 @@
-import files
-from files import Entries, FileKind
+import luce_std.files
+from luce_std.files import Entries, FileKind
 import workspace.paths as paths
 
 pub struct Entry:

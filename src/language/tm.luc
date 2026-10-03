@@ -3,9 +3,9 @@
 ## span through the theme. A wall-clock budget inside the tokenizer leaves a very large file's
 ## tail plain rather than blocking on open. Folding for grammar languages is a later pass; this
 ## module publishes highlights only.
-from ui import TextEditor, Highlight
+from luce_ui.ui import TextEditor, Highlight
 from language.appearance import SyntaxTheme
-from tm import Grammar, Tokenizer
+from luce_textmate.textmate import Grammar, Tokenizer
 
 pub class TmHighlighter:
     let editor: TextEditor

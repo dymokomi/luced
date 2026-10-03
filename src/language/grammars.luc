@@ -1,9 +1,9 @@
 ## A set of TextMate grammars loaded from a directory, indexed by the file extensions they claim.
 ## A missing directory or an unreadable or malformed grammar is skipped, so highlighting simply
 ## falls back rather than failing to open the editor.
-from tm import Grammar
-from files import Entries
-import files
+from luce_textmate.textmate import Grammar
+from luce_std.files import Entries
+import luce_std.files
 import os
 import workspace.paths as paths
 

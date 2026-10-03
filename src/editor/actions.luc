@@ -1,6 +1,6 @@
 ## One action instance supplies each command everywhere it is presented.
-from ui import Command, Shortcut
-from input import Key
+from luce_ui.ui import Command, Shortcut
+from luce_window.input import Key
 from interop import Connection
 from workspace.controller import Workspace
 from editor.text_actions import TextActions

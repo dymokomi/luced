@@ -2,11 +2,11 @@
 ## operations and open documents. The right-click menu is context sensitive: the
 ## selection decides which of these actions it offers. Selection is captured
 ## before a modal prompt opens.
-from ui import Command, TextPrompt
+from luce_ui.ui import Command, TextPrompt
 from interop import Connection
 from workspace.controller import Workspace
 from editor.journal import Journal
-import clipboard
+import luce_clipboard.clipboard
 import workspace.paths as paths
 
 pub class FileActions:

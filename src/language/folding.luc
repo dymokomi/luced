@@ -2,7 +2,7 @@
 ## fold header, and its region runs to the last line indented past it. This works for every
 ## language the editor highlights — no lexer or grammar-specific structure needed — so folding and
 ## highlighting share one path. Offsets count Unicode scalars, exactly as TextEditor does.
-from ui import TextEditor, FoldRange
+from luce_ui.ui import TextEditor, FoldRange
 
 pub class Folder:
     let editor: TextEditor

@@ -1,6 +1,6 @@
 ## Text menus bind to one control. Source and output therefore share editing
 ## behavior without sending output commands to the currently open source file.
-from ui import Command, TextEditor
+from luce_ui.ui import Command, TextEditor
 from interop import Connection
 
 pub class TextActions:

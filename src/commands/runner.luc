@@ -1,9 +1,9 @@
 ## One cancellable command at a time. Compiler and program processes use the
 ## standard library's worker; UI callbacks only poll immutable output snapshots.
-from process import Command
-import files
+from luce_std.process import Command
+import luce_std.files
 import platform
-from ui import TextEditor
+from luce_ui.ui import TextEditor
 import workspace.paths as paths
 
 pub class Runner:

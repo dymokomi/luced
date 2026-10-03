@@ -1,5 +1,5 @@
 ## Syntax colors are independent of token discovery and UI layout.
-from gpu import Color
+from luce_gpu.gpu import Color
 
 pub class SyntaxTheme:
     pub let keyword_color: Color

@@ -1,6 +1,6 @@
 ## Session construction composes configuration, commands, named views and the
 ## workspace. Interaction policy stays in those components, not the entry point.
-from ui import Application, Font, Shortcut, Command
+from luce_ui.ui import Application, Font, Shortcut, Command
 from interop import Connection
 from editor.options import Options
 from editor.actions import EditorActions
@@ -17,9 +17,9 @@ from workspace.editors import Editors
 from language.grammars import GrammarSet
 from commands.runner import Runner
 from editor.ai_tools import AiTools
-import ai_agent as agent
+import luce_ai.agent
 import workspace.paths as paths
-import files
+import luce_std.files
 
 ## The tools the model may call, as JSON function schemas (the agent wraps them in an
 ## array). Read tools inspect the project; edit tools change the focused document and

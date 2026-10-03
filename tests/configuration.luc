@@ -1,14 +1,14 @@
 from configuration.settings import Settings
 from configuration.theme import Appearance
 from configuration.store import Store
-from config import AiConfig
+from luce_ai.config import AiConfig
 from editor.application import Editor
 from editor.options import Options
-from ui import Event, default_font_size
-from input import EventKind, Key
+from luce_ui.ui import Event, default_font_size
+from luce_window.input import EventKind, Key
 import configuration.settings as settings
 import configuration.theme as theme
-import files
+import luce_std.files
 import workspace.paths as paths
 import workspace.operations as operations
 

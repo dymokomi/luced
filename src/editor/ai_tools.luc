@@ -2,10 +2,10 @@
 ## resolved under the workspace root and refused if it escapes; edits go through the
 ## editor, so one Undo reverts anything the model changed. Each tool returns a short
 ## string that is sent back to the model as that tool call's result.
-from ui import TextEditor
-from files import Entries, FileKind
+from luce_ui.ui import TextEditor
+from luce_std.files import Entries, FileKind
 from workspace.controller import Workspace
-import files
+import luce_std.files
 import workspace.paths as paths
 
 let MAX_RESULT = 24000

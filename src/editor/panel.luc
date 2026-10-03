@@ -2,7 +2,7 @@
 ## text, history and language analysis when the tab moves to another group. Each
 ## pane carries its own status bar: the document's syntax, caret position, encoding
 ## and line ending, with the language menu that switches its highlighter.
-from ui import Command, ContextMenu, Font, IconKind, Menu, Panel, Shelf, Size, Spacer, Text, TextEditor, VStack
+from luce_ui.ui import Command, ContextMenu, Font, IconKind, Menu, Panel, Shelf, Size, Spacer, Text, TextEditor, VStack
 from interop import Connection
 from workspace.document import Document
 import editor.file_items as file_items

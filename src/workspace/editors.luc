@@ -1,14 +1,14 @@
 ## Document-tab lifetime and selection. Docking itself stays in luce-ui; this
 ## component decides which document to open and whether a tab may close.
-from ui import Command, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu, ColorEditor
+from luce_ui.ui import Command, DStack, DockPosition, DockRequest, Font, Panel, TextEditor, ContextMenu, ColorEditor
 from interop import Connection
 from editor.panel import EditorPanel
 from editor.text_actions import TextActions
 from workspace.document import Document
 from language.appearance import SyntaxTheme
 from language.grammars import GrammarSet
-import files
-import ui
+import luce_std.files
+import luce_ui.ui
 import workspace.paths as paths
 
 pub class Editors:
