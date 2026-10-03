@@ -3,8 +3,8 @@ from luce_ui.ui import Theme
 from luce_gpu.gpu import Color
 from language.appearance import SyntaxTheme
 from luce_config.toml import Table
-import luce_std.math
-import luce_ui.ui
+from luce_std import math
+from luce_ui import ui
 
 pub class Appearance:
     pub let theme: Theme

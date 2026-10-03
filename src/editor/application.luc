@@ -17,9 +17,9 @@ from workspace.editors import Editors
 from language.grammars import GrammarSet
 from commands.runner import Runner
 from editor.ai_tools import AiTools
-import luce_ai.agent
+from luce_ai import agent
 import workspace.paths as paths
-import luce_std.files
+from luce_std import files
 
 ## The tools the model may call, as JSON function schemas (the agent wraps them in an
 ## array). Read tools inspect the project; edit tools change the focused document and

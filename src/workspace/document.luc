@@ -7,8 +7,8 @@ from language.swatches import SwatchHighlighter
 from language.grammars import GrammarSet
 from language.appearance import SyntaxTheme
 from interop import Connection
-import luce_std.files
-import luce_ui.ui
+from luce_std import files
+from luce_ui import ui
 
 pub class Document:
     pub var path: str

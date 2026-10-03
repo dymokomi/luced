@@ -5,7 +5,7 @@
 from luce_ui.ui import TextEditor
 from luce_std.files import Entries, FileKind
 from workspace.controller import Workspace
-import luce_std.files
+from luce_std import files
 import workspace.paths as paths
 
 let MAX_RESULT = 24000

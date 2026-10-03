@@ -14,8 +14,8 @@ from language.grammars import GrammarSet
 from workspace.explorer import Entry
 import workspace.operations as operations
 import workspace.paths as paths
-import luce_ui.ui
-import luce_std.files
+from luce_ui import ui
+from luce_std import files
 import editor.file_items as file_items
 
 pub class Workspace:

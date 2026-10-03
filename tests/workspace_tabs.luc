@@ -4,7 +4,7 @@ from editor.application import Editor
 from editor.options import Options
 from luce_ui.ui import DockPosition, Event
 from luce_window.input import EventKind, Key
-import luce_std.files
+from luce_std import files
 import workspace.paths as paths
 
 pub func workspace_tabs(root: str, luce: str, base: str) -> unit!:

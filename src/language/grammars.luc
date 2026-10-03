@@ -3,7 +3,7 @@
 ## falls back rather than failing to open the editor.
 from luce_textmate.textmate import Grammar
 from luce_std.files import Entries
-import luce_std.files
+from luce_std import files
 import os
 import workspace.paths as paths
 

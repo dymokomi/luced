@@ -1,9 +1,9 @@
 from workspace.document import Document
 from editor.application import Editor
 from editor.options import Options
-import luce_ui.ui
+from luce_ui import ui
 import workspace.paths as paths
-import luce_std.files
+from luce_std import files
 import thread
 from configuration_tests import configuration
 from workspace_tab_tests import workspace_tabs

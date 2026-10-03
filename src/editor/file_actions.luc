@@ -6,7 +6,7 @@ from luce_ui.ui import Command, TextPrompt
 from interop import Connection
 from workspace.controller import Workspace
 from editor.journal import Journal
-import luce_clipboard.clipboard
+from luce_clipboard import clipboard
 import workspace.paths as paths
 
 pub class FileActions:

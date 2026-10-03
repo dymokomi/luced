@@ -2,7 +2,7 @@
 ## `<config>/luced.log` after each one, so if luced stops — including on an uncatchable trap, where
 ## no error handler runs — the log still holds what was happening just before. It is deliberately
 ## coarse (one line per user-visible action, not per frame), so the last few lines localise a crash.
-import luce_std.files
+from luce_std import files
 import time
 import workspace.paths as paths
 

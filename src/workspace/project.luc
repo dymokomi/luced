@@ -2,7 +2,7 @@
 ## it asks luc, so both agree on what a project is. Loading is a background command,
 ## polled like the other scans, so opening a folder never blocks the UI.
 from luce_std.process import Command
-import luce_std.files
+from luce_std import files
 import workspace.paths as paths
 
 pub struct Dependency:

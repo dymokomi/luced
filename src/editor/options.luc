@@ -1,6 +1,6 @@
 ## Command-line policy is separate from view construction and session lifetime.
-import luce_std.files
-import luce_ui.ui
+from luce_std import files
+from luce_ui import ui
 
 pub class Options:
     pub var help: bool = false

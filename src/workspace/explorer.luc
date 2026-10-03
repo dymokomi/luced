@@ -1,4 +1,4 @@
-import luce_std.files
+from luce_std import files
 from luce_std.files import Entries, FileKind
 import workspace.paths as paths
 
