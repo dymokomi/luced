@@ -100,7 +100,7 @@ pub func main(arguments: list[str]) -> int!:
             captured = true)
 """
     if a.menu or a.palette or a.context or a.hover or a.dock or a.wrap:
-        source = 'from ui import Event\nfrom input import EventKind' + (', Key' if a.menu or a.palette or a.wrap else '') + '\n' + source
+        source = 'from luce_ui.ui import Event\nfrom luce_window.input import EventKind' + (', Key' if a.menu or a.palette or a.wrap else '') + '\n' + source
     if a.menu:
         source = source.replace('        if captured:', """        if frames == 10:
             editor.app.dispatch(Event(cancelled = true))
@@ -117,7 +117,7 @@ pub func main(arguments: list[str]) -> int!:
         target = {'editor': 'context', 'files': 'editor.view.sidebar.context', 'output': 'editor.view.output.context'}[a.context]
         setup = ''
         if a.context == 'editor':
-            source = 'from ui import invalid\n' + source
+            source = 'from luce_ui.ui import invalid\n' + source
             setup = '            let context = editor.workspace.current_context() else error(invalid, "preview needs an editor panel")\n'
         source = source.replace('        if captured:', f"""        if frames == 10:
 {setup}            let bounds = {target}.layout().bounds()
@@ -144,7 +144,7 @@ pub func main(arguments: list[str]) -> int!:
             editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + 60.0, y = bounds.y + 100.0))
 '''
         elif a.hover == 'gutter':
-            source = 'from ui import invalid\n' + source
+            source = 'from luce_ui.ui import invalid\n' + source
             events = '''            let control = editor.workspace.current_editor() else error(invalid, "preview needs an open document")
             let bounds = control.layout().bounds()
             editor.app.dispatch(Event(kind = EventKind.pointer_moved, x = bounds.x + 4.0, y = bounds.y + 50.0))
@@ -163,7 +163,7 @@ pub func main(arguments: list[str]) -> int!:
             editor.app.dispatch(Event(kind = EventKind.key_down, key = Key.z, control = true, alt = true))
         if captured:""")
     if a.diff:
-        source = 'from ui import invalid\n' + source
+        source = 'from luce_ui.ui import invalid\n' + source
         source = source.replace('        if captured:', """        if frames == 10:
             let control = editor.workspace.current_editor() else error(invalid, "preview needs an editor")
             control.set_selection(0, 0)
@@ -178,7 +178,7 @@ pub func main(arguments: list[str]) -> int!:
                 control.insert("")
         if captured:""")
     if a.dock:
-        source = 'from ui import invalid\n' + source
+        source = 'from luce_ui.ui import invalid\n' + source
         events = '''            let panel = editor.workspace.current_panel() else error(invalid, "preview needs a document panel")
             let root = editor.view.dock.layout().bounds()
 '''
@@ -202,7 +202,7 @@ pub func main(arguments: list[str]) -> int!:
     if a.settle:
         source = source.replace('        frames += 1\n', '        frames += 1\n        editor.workspace.frame(0.6)\n')
     if a.color:
-        source = 'from ui import Event\nfrom input import EventKind\nfrom ui import invalid\n' + source
+        source = 'from luce_ui.ui import Event\nfrom luce_window.input import EventKind\nfrom luce_ui.ui import invalid\n' + source
         source = source.replace('        if captured:', """        if frames == 10:
             let control = editor.workspace.current_editor() else error(invalid, "preview needs an editor")
             let offset = control.first_swatch()
