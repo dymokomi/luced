@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='luced-preview-') as temporary:
     (work / 'package.prisma').write_text(manifest + '}\n')
     native = (ROOT.parent / 'luce-gpu/tests/programs/gpu/native.lucb').read_text()
     native += '''
-import files
+import luce_std.files
 import memory
 import strings
 pub func save(path: str) -> !:
