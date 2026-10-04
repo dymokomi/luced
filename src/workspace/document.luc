@@ -30,7 +30,7 @@ pub class Document:
 
     pub func init(self, path: str, font: Font? = none, syntax: SyntaxTheme? = none, grammars: GrammarSet? = none, blank: bool = false, wrap: bool = false) -> unit!:
         let text = "" if blank else files.read_text(path)
-        self.path = "" if blank else files.absolute_path(path)
+        self.path = "" if blank else files.canonical(path)
         self.original = text
         self.crlf = text.contains("\r\n")
         let editor = TextEditor(text, font = font, wrap = wrap)
@@ -44,7 +44,7 @@ pub class Document:
         self.folder = none
         self.swatcher = none
         self.language = "Text"
-        try self.attach(syntax, grammars)
+        self.attach(syntax, grammars)
 
     ## Connect the highlighter that fits the current path: a grammar from the set when one claims
     ## the extension, otherwise the built-in Luce lexer for `.luc`/`.lucb`, otherwise nothing.
@@ -76,7 +76,7 @@ pub class Document:
         self.language = language_from_path(self.path)
         if let registry = grammars:
             if let grammar = registry.grammar_for(self.path):
-                let service = try TmHighlighter(self.editor, grammar, syntax)
+                let service = TmHighlighter(self.editor, grammar, syntax)
                 service.update()
                 self.highlighting = self.editor.on_change(service.update)
                 self.tm = service
@@ -99,7 +99,7 @@ pub class Document:
         if let connection = self.highlighting: connection.disconnect()
         self.highlighting = none
         self.tm = none
-        let service = try TmHighlighter(self.editor, grammar, self.syntax)
+        let service = TmHighlighter(self.editor, grammar, self.syntax)
         service.update()
         self.highlighting = self.editor.on_change(service.update)
         self.tm = service
@@ -112,11 +112,11 @@ pub class Document:
 
     pub func rename(self, path: str, syntax: SyntaxTheme?, grammars: GrammarSet?) -> unit!:
         self.path = path
-        try self.attach(syntax, grammars)
+        self.attach(syntax, grammars)
         if self.tm == none:
             self.editor.set_highlights([])
         if self.folder == none:
-            discard(self.editor.set_folds([], self.editor.version()))
+            _ = self.editor.set_folds([], self.editor.version())
 
     ## An untitled buffer has no path on disk yet; saving it needs a destination.
     pub func is_untitled(self) -> bool:

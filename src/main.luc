@@ -31,14 +31,14 @@ func report_crash(options: Options, message: str) -> unit:
 func save_crash(options: Options, message: str) -> unit!:
     var directory = options.config_directory
     if directory == "":
-        directory = paths.join(try files.home_directory(), ".luced")
-    try files.ensure_directory(directory)
+        directory = paths.join(files.home_directory(), ".luced")
+    files.ensure_directory(directory)
     let log_path = paths.join(directory, "luced.log")
     let trail = files.read_text(log_path, 200000) catch failure: recover ""
     let report = "luced closed unexpectedly:\n\n" + message + "\n\nRecent activity (also in luced.log):\n" + trail + "\n"
     print(report)
     let crash_path = paths.join(directory, "crash.log")
-    try files.write_text(crash_path, report)
+    files.write_text(crash_path, report)
     # Record the crash in the running log too, so the two files agree.
-    try files.write_text(log_path, trail + "[crash] " + message + "\n")
+    files.write_text(log_path, trail + "[crash] " + message + "\n")
     print("saved a crash report to " + crash_path)

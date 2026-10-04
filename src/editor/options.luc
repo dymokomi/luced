@@ -28,7 +28,7 @@ pub class Options:
                     self.config_directory = arguments[index]
                     index += 1
                     continue
-                let compiler = files.absolute_path(arguments[index])
+                let compiler = files.canonical(arguments[index])
                 if argument == "--luce":
                     self.luce = compiler
                     self.luce_override = true

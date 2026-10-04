@@ -107,7 +107,7 @@ pub class Runner:
 func project_root(directory: str) -> str:
     var candidate = directory
     while candidate != ".":
-        let manifest = files.path_kind(paths.join(candidate, "luce.toml")) catch failure:
+        let manifest = files.metadata(paths.join(candidate, "luce.toml")).kind catch failure:
             recover files.FileKind.unknown
         if manifest == files.FileKind.regular:
             return candidate

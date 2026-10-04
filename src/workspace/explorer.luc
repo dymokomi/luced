@@ -1,5 +1,5 @@
 from luce_std import files
-from luce_std.files import Entries, FileKind
+from luce_std.files import FileKind
 import workspace.paths as paths
 
 pub struct Entry:
@@ -18,16 +18,14 @@ pub class Explorer:
         self.entries = []
         self.hidden_paths = []
         self.show_hidden = false
-        self.directory = files.absolute_path(directory)
+        self.directory = files.canonical(directory)
         self.open(self.directory)
 
     pub func open(self, path: str) -> unit!:
-        let absolute = files.absolute_path(path)
-        let snapshot = Entries(absolute)
+        let absolute = files.canonical(path)
         var directories: list[Entry] = []
         var regular: list[Entry] = []
-        for index in 0..<snapshot.count():
-            let name = snapshot.name(index) catch failure: continue
+        for name in files.list(absolute):
             if name in [".DS_Store", "__pycache__", ".", ".."]:
                 continue
             if name.starts_with(".") and not self.show_hidden:
@@ -35,12 +33,11 @@ pub class Explorer:
             let full = paths.join(absolute, name)
             if full in self.hidden_paths and not self.show_hidden:
                 continue
-            let kind = files.path_kind(full) catch failure: continue
+            let kind = files.metadata(full).kind catch failure: continue
             if kind == FileKind.directory:
                 directories.append(Entry(name, full, true))
             elif kind == FileKind.regular:
                 regular.append(Entry(name, full, false))
-        snapshot.close()
         let parent = paths.parent(absolute)
         self.entries = ([Entry("..", parent, true)] if parent != absolute else []) + directories + regular
         self.directory = absolute

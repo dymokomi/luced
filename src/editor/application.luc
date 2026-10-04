@@ -61,11 +61,11 @@ pub class Editor:
             warning += " Font: " + failure.message
             family = ""
             recover Font()
-        let absolute = files.absolute_path(options.location)
-        let is_file = files.path_kind(absolute) == files.FileKind.regular
+        let absolute = files.canonical(options.location)
+        let is_file = files.metadata(absolute).kind == files.FileKind.regular
         let explorer = Explorer(paths.parent(absolute) if is_file else absolute)
         let grammars = GrammarSet(store.grammars_dir)
-        let switcher = try SyntaxSwitcher(grammars)
+        let switcher = SyntaxSwitcher(grammars)
         let actions = EditorActions()
         let journal = Journal(store.directory)
         actions.files.set_journal(journal)
@@ -82,7 +82,7 @@ pub class Editor:
         let workspace = Workspace(app, explorer, view.sidebar.listing, view.sidebar.body, view.status, runner, editors, view.dialog, appearance.theme)
         workspace.set_syntax(appearance.syntax)
         workspace.set_grammars(grammars)
-        try switcher.connect(workspace)
+        switcher.connect(workspace)
         let configuration = Configuration(store, font, app, view.body.layout(), workspace, runner, options, family)
         let tools = AiTools(workspace)
         self.app = app
@@ -109,7 +109,7 @@ pub class Editor:
             workspace.open(absolute)
         if warning != "":
             workspace.report(warning)
-        try actions.update(workspace, runner.busy())
+        actions.update(workspace, runner.busy())
 
     func connect(self) -> unit!:
         for connection in self.actions.connect(self.workspace): self.connections.append(connection)
@@ -140,14 +140,14 @@ pub class Editor:
         # The heartbeat pumps a running build's output and polls settings on disk; it
         # paces itself fast while a command runs and slow when idle, so a quiet window
         # barely wakes. A finished AI turn is delivered by ai_pump on its wake() instead.
-        self.heartbeat = try self.app.after(self.beat, self.tick)
+        self.heartbeat = self.app.after(self.beat, self.tick)
         self.connections.append(self.app.on_frame(self.ai_pump))
 
     func update_actions(self) -> unit!:
-        try self.actions.update(self.workspace, self.runner.busy())
+        self.actions.update(self.workspace, self.runner.busy())
 
     pub func open_palette(self) -> unit!:
-        try self.update_actions()
+        self.update_actions()
         self.view.palette.open()
 
     pub func focus_explorer(self) -> unit!:
@@ -176,15 +176,15 @@ pub class Editor:
 
     ## Cmd+I: ask the "ask" model a question, with any selected text as context.
     pub func ask_ai(self) -> unit!:
-        try self.begin_mode("ask", true, "Ask AI", "Ask")
+        self.begin_mode("ask", true, "Ask AI", "Ask")
 
     ## Cmd+Shift+I: describe a change; the "write" model edits the document to make it.
     pub func write_ai(self) -> unit!:
-        try self.begin_mode("write", true, "Write — describe the change", "Write")
+        self.begin_mode("write", true, "Write — describe the change", "Write")
 
     ## Spellcheck the selection, or the whole document when nothing is selected.
     pub func spellcheck_ai(self) -> unit!:
-        try self.begin_mode("spellcheck", false, "", "")
+        self.begin_mode("spellcheck", false, "", "")
 
     ## Start an AI mode. "ask"/"write" open a prompt first; "spellcheck" runs at once.
     ## The editing modes act on the selection when there is one, else the whole file.
@@ -243,7 +243,7 @@ pub class Editor:
             return
         self.ai_waiting = true
         self.ai_log = mode.model + "  ·  " + self.ai_mode + "\n"
-        try self.ai_note("→ asking the model …")
+        self.ai_note("→ asking the model …")
         self.view.dock.select(self.view.output.body)
 
     ## Append one transcript line to the Output pane, live, so each step is visible as it
@@ -251,7 +251,7 @@ pub class Editor:
     func ai_note(self, line: str) -> unit!:
         self.ai_log += line + "\n"
         self.view.output.output.set_text(self.ai_log)
-        try self.view.output.output.set_selection(self.ai_log.length, self.ai_log.length)
+        self.view.output.output.set_selection(self.ai_log.length, self.ai_log.length)
 
     ## Parse a finished turn: show the final answer or an error, or execute the tools
     ## the model requested and start the next turn. Runs on the main thread, so a tool
@@ -260,31 +260,31 @@ pub class Editor:
         let code = agent.finish() catch failure:
             self.ai_waiting = false
             self.clear_ai_region()
-            try self.ai_note("✗ error: " + failure.message)
+            self.ai_note("✗ error: " + failure.message)
             return
         if code != 1:
             self.ai_waiting = false
             self.clear_ai_region()
-            try self.ai_note("✓ " + agent.reply())
+            self.ai_note("✓ " + agent.reply())
             return
         self.ai_turns += 1
-        for i in try self.tool_order(agent.tool_count()):
-            let name = try agent.tool_name(i)
-            try self.ai_note("• " + try self.tool_summary(name, i))
-            try self.mark_ai_region(name, i)
-            agent.add_tool_result(try agent.tool_id(i), try self.run_tool(name, i))
+        for i in self.tool_order(agent.tool_count()):
+            let name = agent.tool_name(i)
+            self.ai_note("• " + self.tool_summary(name, i))
+            self.mark_ai_region(name, i)
+            agent.add_tool_result(agent.tool_id(i), self.run_tool(name, i))
         if self.ai_turns >= 8:
             self.ai_waiting = false
             self.clear_ai_region()
-            try self.ai_note("✗ stopped after 8 tool rounds")
+            self.ai_note("✗ stopped after 8 tool rounds")
             return
         let cfg = self.configuration.ai()
         if not agent.begin(cfg.openrouter.api_key, cfg.mode(self.ai_mode).model):
             self.ai_waiting = false
             self.clear_ai_region()
-            try self.ai_note("✗ the request could not continue")
+            self.ai_note("✗ the request could not continue")
             return
-        try self.ai_note("→ asking the model …")
+        self.ai_note("→ asking the model …")
 
     ## Stripe the gutter of the lines the current tool touches, so the document shows
     ## what the AI is looking at or changing as it works.
@@ -293,9 +293,9 @@ pub class Editor:
         if name == "read_selection":
             editor.set_ai_lines(editor.selection_first_line(), editor.selection_last_line())
         elif name == "replace_lines" or name == "delete_lines":
-            editor.set_ai_lines(try self.line_arg(index, "first"), try self.line_arg(index, "last"))
+            editor.set_ai_lines(self.line_arg(index, "first"), self.line_arg(index, "last"))
         elif name == "insert_lines":
-            let after = try self.line_arg(index, "after")
+            let after = self.line_arg(index, "after")
             editor.set_ai_lines(after, after + 1)
 
     func clear_ai_region(self) -> unit:
@@ -311,17 +311,17 @@ pub class Editor:
         if name == "set_document":
             return "rewriting the document"
         if name == "replace_lines":
-            return "editing lines " + str(try self.line_arg(index, "first")) + "–" + str(try self.line_arg(index, "last"))
+            return "editing lines " + str(self.line_arg(index, "first")) + "–" + str(self.line_arg(index, "last"))
         if name == "insert_lines":
-            return "inserting after line " + str(try self.line_arg(index, "after"))
+            return "inserting after line " + str(self.line_arg(index, "after"))
         if name == "delete_lines":
-            return "deleting lines " + str(try self.line_arg(index, "first")) + "–" + str(try self.line_arg(index, "last"))
+            return "deleting lines " + str(self.line_arg(index, "first")) + "–" + str(self.line_arg(index, "last"))
         if name == "read_file":
-            return "reading " + (try agent.tool_arg(index, "path"))
+            return "reading " + (agent.tool_arg(index, "path"))
         if name == "list_dir":
-            return "listing " + (try agent.tool_arg(index, "path"))
+            return "listing " + (agent.tool_arg(index, "path"))
         if name == "find_text":
-            return "searching \"" + (try agent.tool_arg(index, "query")) + "\""
+            return "searching \"" + (agent.tool_arg(index, "query")) + "\""
         return name
 
     func run_tool(self, name: str, index: int) -> str!:
@@ -330,24 +330,24 @@ pub class Editor:
         if name == "read_document":
             return self.tools.read_document()
         if name == "replace_lines":
-            return self.tools.replace_lines(try self.line_arg(index, "first"), try self.line_arg(index, "last"), try agent.tool_arg(index, "text"))
+            return self.tools.replace_lines(self.line_arg(index, "first"), self.line_arg(index, "last"), agent.tool_arg(index, "text"))
         if name == "insert_lines":
-            return self.tools.insert_lines(try self.line_arg(index, "after"), try agent.tool_arg(index, "text"))
+            return self.tools.insert_lines(self.line_arg(index, "after"), agent.tool_arg(index, "text"))
         if name == "delete_lines":
-            return self.tools.delete_lines(try self.line_arg(index, "first"), try self.line_arg(index, "last"))
+            return self.tools.delete_lines(self.line_arg(index, "first"), self.line_arg(index, "last"))
         if name == "set_document":
-            return self.tools.set_document(try agent.tool_arg(index, "text"))
+            return self.tools.set_document(agent.tool_arg(index, "text"))
         if name == "read_file":
-            return self.tools.read_file(try agent.tool_arg(index, "path"))
+            return self.tools.read_file(agent.tool_arg(index, "path"))
         if name == "list_dir":
-            return self.tools.list_dir(try agent.tool_arg(index, "path"))
+            return self.tools.list_dir(agent.tool_arg(index, "path"))
         if name == "find_text":
-            return self.tools.find_text(try agent.tool_arg(index, "query"))
+            return self.tools.find_text(agent.tool_arg(index, "query"))
         return "error: unknown tool " + name
 
     ## A tool's integer argument (line numbers arrive as JSON numbers), 0 if unparseable.
     func line_arg(self, index: int, key: str) -> int!:
-        let value = try agent.tool_arg(index, key)
+        let value = agent.tool_arg(index, key)
         return int(value) catch failure:
             recover 0
 
@@ -359,13 +359,13 @@ pub class Editor:
         var edits: list[int] = []
         var keys: list[int] = []
         for i in 0..<count:
-            let name = try agent.tool_name(i)
+            let name = agent.tool_name(i)
             if name == "replace_lines" or name == "delete_lines":
                 edits.append(i)
-                keys.append(try self.line_arg(i, "first"))
+                keys.append(self.line_arg(i, "first"))
             elif name == "insert_lines":
                 edits.append(i)
-                keys.append(try self.line_arg(i, "after"))
+                keys.append(self.line_arg(i, "after"))
             else:
                 order.append(i)
         while edits.length > 0:
@@ -390,9 +390,9 @@ pub class Editor:
     func tick(self) -> unit!:
         self.workspace.frame(self.beat)
         self.configuration.poll(self.beat)
-        try self.update_actions()
+        self.update_actions()
         self.beat = 0.03 if self.runner.busy() else 0.5
-        self.heartbeat = try self.app.after(self.beat, self.tick)
+        self.heartbeat = self.app.after(self.beat, self.tick)
 
     ## Runs on every loop wake (including a worker's wake() when an AI turn finishes),
     ## so a reply or the next tool round is delivered at once rather than on a poll.

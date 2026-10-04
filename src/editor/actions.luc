@@ -131,7 +131,7 @@ pub class EditorActions:
         var has_selection = false
         if let editor = workspace.current_editor():
             has_selection = editor.has_selection()
-        try self.spellcheck_ai.set_text("Spellcheck Selection" if has_selection else "Spellcheck")
+        self.spellcheck_ai.set_text("Spellcheck Selection" if has_selection else "Spellcheck")
         self.spellcheck_ai.set_enabled(workspace.has_document())
         self.ask_ai.set_enabled(workspace.has_document())
         self.write_ai.set_enabled(workspace.has_document())

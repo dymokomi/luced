@@ -14,12 +14,12 @@ pub struct Dependency:
 
 ## The nearest directory at or above `directory` holding a package.prisma, or none.
 pub func root_of(directory: str) -> str?:
-    var candidate = files.absolute_path(directory) catch failure:
+    var candidate = files.canonical(directory) catch failure:
         return none
     var steps = 0
     while steps < 64:
         steps += 1
-        let kind = files.path_kind(paths.join(candidate, "package.prisma")) catch failure:
+        let kind = files.metadata(paths.join(candidate, "package.prisma")).kind catch failure:
             recover files.FileKind.unknown
         if kind == files.FileKind.regular:
             return candidate

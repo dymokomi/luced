@@ -47,7 +47,7 @@ pub class Editors:
         dock.set_catalog(["editor"], ["New Editor"])
         self.connections.append(dock.on_close(self.removed))
         dock.set_close_handler(self.can_close)
-        discard(self.create(anchor, DockPosition.top))
+        _ = self.create(anchor, DockPosition.top)
         dock.set_fraction(anchor, 0.77)
 
     ## Adopt the shared color editor and wire its live changes back to the source.
@@ -117,7 +117,7 @@ pub class Editors:
         if let active = self.active:
             self.dock.select(active.body)
         else:
-            discard(self.create(self.anchor, DockPosition.top))
+            _ = self.create(self.anchor, DockPosition.top)
 
     pub func set_syntax(self, theme: SyntaxTheme) -> unit!:
         self.syntax = theme
@@ -128,7 +128,7 @@ pub class Editors:
         self.grammars = grammars
 
     pub func open(self, path: str) -> unit!:
-        let identity = files.absolute_path(path)
+        let identity = files.canonical(path)
         for tab in self.tabs:
             if let document = tab.document:
                 if document.path == identity:
@@ -177,7 +177,7 @@ pub class Editors:
         return tab
 
     func add_requested(self, request: DockRequest) -> unit!:
-        discard(self.create(request.panel, request.position))
+        _ = self.create(request.panel, request.position)
 
     func selected(self, panel: Panel):
         self.sync_focus()
@@ -207,7 +207,7 @@ pub class Editors:
                 if let focused = self.last_focused:
                     if focused is panel: self.last_focused = none
                 tab.close()
-                discard(self.tabs.remove_at(index))
+                _ = self.tabs.remove_at(index)
                 return
             index += 1
 

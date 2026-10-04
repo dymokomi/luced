@@ -17,7 +17,7 @@ pub class Folder:
         if revision == self.version:
             return
         let length = self.editor.length()
-        let text = try self.editor.text_range(0, length)
+        let text = self.editor.text_range(0, length)
         if self.editor.set_folds(compute_folds(text, length), revision):
             self.version = revision
 

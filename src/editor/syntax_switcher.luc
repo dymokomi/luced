@@ -16,7 +16,7 @@ class LanguageChoice:
 
     func apply(self) -> unit!:
         if let document = self.workspace.current_document():
-            try document.set_language(self.filename)
+            document.set_language(self.filename)
 
 ## Owns the language commands (built before the workspace exists, so the menu can be laid out) and
 ## wires them to the workspace once it does. Kept alive for the session so the connections persist.
@@ -33,7 +33,7 @@ pub class SyntaxSwitcher:
         self.connections = []
         for filename in grammars.languages():
             self.files.append(filename)
-            self.commands.append(try Command(label_for(filename), id = "language:" + filename))
+            self.commands.append(Command(label_for(filename), id = "language:" + filename))
 
     ## The commands to place in the status-bar language menu.
     pub func menu_commands(self) -> list[Command]:
@@ -45,7 +45,7 @@ pub class SyntaxSwitcher:
         while index < self.commands.length:
             let choice = LanguageChoice(workspace, self.files[index])
             self.choices.append(choice)
-            self.connections.append(try self.commands[index].on_trigger(choice.apply))
+            self.connections.append(self.commands[index].on_trigger(choice.apply))
             index += 1
 
 ## Turn "cpp.tmLanguage.json" into a menu label like "cpp".

@@ -139,10 +139,10 @@ pub class Workspace:
         self.refresh_files()
 
     pub func paste_into(self, directory: str, source: str, move: bool) -> unit!:
-        let identity = files.absolute_path(source)
+        let identity = files.canonical(source)
         let target = operations.paste(source, directory, move)
         if move:
-            self.editors.rename(identity, files.absolute_path(target))
+            self.editors.rename(identity, files.canonical(target))
         self.refresh_files()
         self.report(("Moved " if move else "Copied ") + paths.name(target))
 
@@ -188,26 +188,26 @@ pub class Workspace:
         self.refresh_files()
 
     pub func rename_entry(self, source: str, name: str) -> unit!:
-        let entry = paths.join(files.absolute_path(paths.parent(source)), paths.name(source))
-        let linked = files.path_kind(entry, follow_symlinks = false) == files.FileKind.symlink
-        let identity = files.absolute_path(entry)
+        let entry = paths.join(files.canonical(paths.parent(source)), paths.name(source))
+        let linked = files.metadata(entry, follow_symlinks = false).kind == files.FileKind.symlink
+        let identity = files.canonical(entry)
         let destination = operations.child(paths.parent(entry), name)
         if entry == destination:
             return
-        files.move_path(entry, destination)
-        let renamed = files.absolute_path(destination)
+        files.rename(entry, destination, replace = false)
+        let renamed = files.canonical(destination)
         if not linked: self.editors.rename(identity, renamed)
         self.refresh_files()
         self.changed()
 
     pub func delete_entry(self, path: str) -> unit!:
-        let entry = paths.join(files.absolute_path(paths.parent(path)), paths.name(path))
-        let linked = files.path_kind(entry, follow_symlinks = false) == files.FileKind.symlink
-        let identity = files.absolute_path(entry)
+        let entry = paths.join(files.canonical(paths.parent(path)), paths.name(path))
+        let linked = files.metadata(entry, follow_symlinks = false).kind == files.FileKind.symlink
+        let identity = files.canonical(entry)
         for document in self.editors.documents():
             if not linked and (document.path == identity or document.path.starts_with(identity + "/")) and document.dirty():
                 error(ui.invalid, "Save unsaved changes before deleting " + paths.name(path))
-        files.delete_path(entry, recursive = true)
+        files.remove_tree(entry)
         for document in self.editors.documents():
             if not linked and (document.path == identity or document.path.starts_with(identity + "/")):
                 self.editors.remove(document)
@@ -279,7 +279,7 @@ pub class Workspace:
             return
         let document = self.editors.current_document() else return
         if name == "fold":
-            discard(document.editor.toggle_fold(document.editor.line()))
+            _ = document.editor.toggle_fold(document.editor.line())
         elif name == "fold_all":
             document.editor.fold_all()
         elif name == "unfold_all":
@@ -347,7 +347,7 @@ pub class Workspace:
     ## The window close button and the Exit command both come here. Close now when
     ## nothing is unsaved, otherwise raise the save dialog and let close_choice decide.
     pub func can_close(self) -> bool!:
-        let count = try self.unsaved_count()
+        let count = self.unsaved_count()
         if count == 0:
             return true
         let noun = "file" if count == 1 else "files"
@@ -363,7 +363,7 @@ pub class Workspace:
             self.app.stop()
 
     pub func request_exit(self) -> unit!:
-        if try self.can_close():
+        if self.can_close():
             self.app.stop()
 
     pub func frame(self, elapsed: float) -> unit!:

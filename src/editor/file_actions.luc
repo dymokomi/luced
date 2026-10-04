@@ -124,7 +124,7 @@ pub class FileActions:
         let shown = workspace.hidden_shown()
         if shown != self.hidden_label:
             self.hidden_label = shown
-            self.show_hidden.set_text("Hide Hidden Files" if shown else "Show Hidden Files") catch failure: discard(failure)
+            self.show_hidden.set_text("Hide Hidden Files" if shown else "Show Hidden Files") catch failure: _ = failure
 
     func create_file(self) -> unit!:
         self.create("file")

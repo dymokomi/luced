@@ -3,7 +3,7 @@
 ## editor, so one Undo reverts anything the model changed. Each tool returns a short
 ## string that is sent back to the model as that tool call's result.
 from luce_ui.ui import TextEditor
-from luce_std.files import Entries, FileKind
+from luce_std.files import FileKind
 from workspace.controller import Workspace
 from luce_std import files
 import workspace.paths as paths
@@ -49,20 +49,18 @@ pub class AiTools:
 
     pub func list_dir(self, path: str) -> str:
         let full = self.resolve(path) else return "error: path is outside the project"
-        let snapshot = Entries(full) catch failure:
+        let names = files.list(full) catch failure:
             return "error: " + failure.message
         var out = ""
         var shown = 0
-        for index in 0..<snapshot.count():
-            let name = snapshot.name(index) catch failure: continue
+        for name in names:
             if name == "." or name == "..":
                 continue
-            let kind = files.path_kind(paths.join(full, name)) catch failure: continue
+            let kind = files.metadata(paths.join(full, name)).kind catch failure: continue
             out += (name + "/\n") if kind == FileKind.directory else (name + "\n")
             shown += 1
             if shown >= MAX_SCAN_FILES:
                 break
-        snapshot.close()
         return self.clip(out if out != "" else "(empty)")
 
     pub func find_text(self, query: str) -> str:
@@ -77,15 +75,14 @@ pub class AiTools:
         var out = acc
         if self.scanned >= MAX_SCAN_FILES or self.found >= MAX_MATCHES:
             return out
-        let snapshot = Entries(dir) catch failure: return out
-        for index in 0..<snapshot.count():
+        let names = files.list(dir) catch failure: return out
+        for name in names:
             if self.found >= MAX_MATCHES:
                 break
-            let name = snapshot.name(index) catch failure: continue
             if name.starts_with(".") or name in ["node_modules", "build", "__pycache__"]:
                 continue
             let full = paths.join(dir, name)
-            let kind = files.path_kind(full) catch failure: continue
+            let kind = files.metadata(full).kind catch failure: continue
             if kind == FileKind.directory:
                 out = self.scan(full, query, out)
             elif kind == FileKind.regular:
@@ -102,7 +99,6 @@ pub class AiTools:
                         self.found += 1
                         if self.found >= MAX_MATCHES:
                             break
-        snapshot.close()
         return out
 
     ## The selected text and the 1-based line range it covers, so the model can discover

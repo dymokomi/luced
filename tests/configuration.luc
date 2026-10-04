@@ -28,22 +28,22 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     assert(Settings("[editor]\nfont_size = 1_4.5e0\n").font_size == 14.5)
     for text in ["[editor]\nfont_size = 0\n", "[editor]\nfont_size = 14\nfont_size = 15\n", "[editor]\nfont_size = 014\n", "[editor]\nfont_size = 1__4\n", "[editor]\nfont_size = 14.\n", "[unknown]\n", "[editor]\nfont_szie = 14\n", "[editor]\nfont_family = \"unterminated\n"]:
         var refused = false
-        discard(Settings(text) catch failure:
+        _ = Settings(text) catch failure:
             refused = true
-            recover Settings())
+            recover Settings()
         assert(refused)
     var refused = false
-    discard(Appearance("[colors]\ngutter = \"#wrong!\"\n") catch failure:
+    _ = Appearance("[colors]\ngutter = \"#wrong!\"\n") catch failure:
         refused = true
-        recover Appearance())
+        recover Appearance()
     assert(refused)
     files.write_text(store.settings_path, settings.defaults())
     assert(Appearance("[popup]\nshadow_opacity = 0.25\nshadow_offset = 6\n").theme.shadow_opacity == 0.25)
     assert(Appearance("[layout]\nheader_inset_cells = 2\n").theme.header_inset_cells == 2.0)
     refused = false
-    discard(Appearance("[popup]\nshadow_opacity = 2\n") catch failure:
+    _ = Appearance("[popup]\nshadow_opacity = 2\n") catch failure:
         refused = true
-        recover Appearance())
+        recover Appearance()
     assert(refused)
     let fixture = paths.join(root, "configuration-source.luc")
     files.write_text(fixture, "pub func sample():\n    let value = 1\n")
@@ -143,14 +143,14 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     let second = operations.paste(renamed, paths.parent(renamed), move = false)
     assert(copied != second and files.read_text(copied) == files.read_text(renamed))
     refused = false
-    discard(operations.create_file(root, paths.name(renamed)) catch failure:
+    _ = operations.create_file(root, paths.name(renamed)) catch failure:
         refused = true
-        recover "")
+        recover ""
     assert(refused and files.read_text(renamed).starts_with("# retained"))
     source.insert("unsaved")
     refused = false
     editor.workspace.delete_entry(renamed) catch failure: refused = true
-    assert(refused and files.path_kind(renamed) == files.FileKind.regular)
+    assert(refused and files.metadata(renamed).kind == files.FileKind.regular)
     source.undo()
     editor.workspace.delete_entry(renamed)
     editor.workspace.create_folder(root, "nested-λ")
@@ -162,6 +162,6 @@ pub func configuration(root: str, luce: str, base: str) -> unit!:
     editor.workspace.save()
     assert(files.read_text(paths.join(root, "renamed-folder/child.luc")).contains("preserved"))
     editor.workspace.delete_entry(paths.join(root, "renamed-folder"))
-    files.delete_path(copied)
-    files.delete_path(second)
+    files.remove_file(copied)
+    files.remove_file(second)
     editor.close()

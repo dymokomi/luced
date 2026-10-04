@@ -18,7 +18,7 @@ pub func create_file(directory: str, name: str) -> str!:
     return path
 
 pub func create_folder(directory: str, name: str) -> unit!:
-    files.make_directory(child(directory, name))
+    files.create_directory(child(directory, name))
 
 ## Copy or move `source` into `directory`, choosing an unused name so a paste
 ## never clobbers an existing entry; a collision falls back to a " copy" suffix.
@@ -31,12 +31,12 @@ pub func paste(source: str, directory: str, move: bool) -> str!:
         let suffix = "" if number == 0 else (" copy" if number == 1 else f" copy {number}")
         let target = paths.join(directory, stem + suffix + extension)
         if move:
-            files.move_path(source, target) catch failure:
+            files.rename(source, target, replace = false) catch failure:
                 if failure.code == files.already_exists:
                     continue
                 error(failure.code, failure.message)
         else:
-            files.copy_path(source, target) catch failure:
+            files.copy(source, target) catch failure:
                 if failure.code == files.already_exists:
                     continue
                 error(failure.code, failure.message)

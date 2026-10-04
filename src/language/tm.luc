@@ -15,7 +15,7 @@ pub class TmHighlighter:
 
     pub func init(self, editor: TextEditor, grammar: Grammar, theme: SyntaxTheme? = none) -> unit!:
         self.editor = editor
-        self.tok = try Tokenizer(grammar)
+        self.tok = Tokenizer(grammar)
         self.theme = theme else SyntaxTheme({})
         self.version = -1
 
@@ -29,15 +29,15 @@ pub class TmHighlighter:
         if revision == self.version:
             return
         let length = self.editor.length()
-        let text = try self.editor.text_range(0, length)
+        let text = self.editor.text_range(0, length)
         # Re-tokenize incrementally when this is exactly the next revision after the one we have,
         # so the tokenizer can reuse the unchanged prefix and suffix; otherwise tokenize afresh.
         let change = self.editor.change()
         var count = 0
         if self.version >= 0 and revision == self.version + 1 and change.version == revision:
-            count = try self.tok.tokenize_edit(text, change.start, change.old_end, change.new_end)
+            count = self.tok.tokenize_edit(text, change.start, change.old_end, change.new_end)
         else:
-            count = try self.tok.tokenize(text)
+            count = self.tok.tokenize(text)
         var spans: list[Highlight] = []
         var i = 0
         while i < count:
