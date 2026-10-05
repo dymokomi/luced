@@ -61,7 +61,7 @@ pub func main(arguments: list[str]) -> int!:
         assert(iterations < 10000000)
     assert(output.text().contains("hello from luced") and output.text().ends_with("[Exit 0]\n"))
     let base_source = paths.join(root, "main.lucb")
-    files.write_text(base_source, "import io\n\npub func main(arguments: str[]) -> i32!:\n    var output = io.stdout()\n    discard(try output.write(\"hello from base\\n\".bytes))\n    return 0\n")
+    files.write_text(base_source, "import io\n\npub func main(arguments: str[]) -> i32!:\n    var output = io.stdout()\n    _ = try output.write(\"hello from base\\n\".bytes)\n    return 0\n")
     runner.build(base_source, true)
     iterations = 0
     while runner.busy():
