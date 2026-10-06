@@ -15,55 +15,46 @@ def package "luced" {
 
     def dependency "luce-ui" {
         str owner = "dymokomi"
-        str version = "^0.18.0"
         str path = "../luce-ui"
     }
 
     def dependency "luce-config" {
         str owner = "dymokomi"
-        str version = "^0.5.0"
         str path = "../luce-config"
     }
 
     def dependency "luce-ai" {
         str owner = "dymokomi"
-        str version = "^0.4.0"
         str path = "../luce-ai"
     }
 
     def dependency "luce-textmate" {
         str owner = "dymokomi"
-        str version = "^0.6.0"
         str path = "../luce-textmate"
     }
 
     def dependency "luce-regex" {
         str owner = "dymokomi"
-        str version = "^0.6.0"
         str path = "../luce-regex"
     }
 
     def dependency "luce-std" {
         str owner = "dymokomi"
-        str version = "^0.6.0"
         str path = "../luce-std"
     }
 
     def dependency "luce-window" {
         str owner = "dymokomi"
-        str version = "^0.6.1"
         str path = "../luce-window"
     }
 
     def dependency "luce-gpu" {
         str owner = "dymokomi"
-        str version = "^0.5.0"
         str path = "../luce-gpu"
     }
 
     def dependency "luce-clipboard" {
         str owner = "dymokomi"
-        str version = "^0.6.0"
         str path = "../luce-clipboard"
     }
 }
