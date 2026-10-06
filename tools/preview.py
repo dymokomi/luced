@@ -33,9 +33,9 @@ with tempfile.TemporaryDirectory(prefix='luced-preview-') as temporary:
     work = Path(temporary)
     shutil.copytree(ROOT / 'src', work / 'src')
     # the application's own dependencies, each from the checkout beside this one
-    dependencies = re.findall(r'def dependency "([^"]+)" \{\s*str owner = "[^"]*"\s*str version = "([^"]+)"', (ROOT / 'package.prisma').read_text())
+    dependencies = re.findall(r'def dependency "([^"]+)"', (ROOT / 'package.prisma').read_text())
     manifest = '#prisma 4.0\ndef package "luced-preview" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "src/main.luc"\n'
-    manifest += ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str version = "%s"\n        str path = %s\n    }\n' % (name, version, json.dumps(str(ROOT.parent / name))) for name, version in dependencies)
+    manifest += ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str path = %s\n    }\n' % (name, json.dumps(str(ROOT.parent / name))) for name in dependencies)
     (work / 'package.prisma').write_text(manifest + '}\n')
     native = (ROOT.parent / 'luce-gpu/tests/programs/gpu/native.lucb').read_text()
     native += '''

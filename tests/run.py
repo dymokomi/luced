@@ -23,8 +23,8 @@ with tempfile.TemporaryDirectory(prefix='luced-tests-') as temp:
     shutil.copy2(ROOT / 'tests/workspace_tabs.luc', project / 'src/workspace_tab_tests.luc')
     # The application's own dependencies, each taken from the checkout beside this one.
     manifest = (ROOT / 'package.prisma').read_text()
-    dependencies = ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str version = "%s"\n        str path = %s\n    }\n' % (name, version, json.dumps(str(ROOT.parent / name)))
-                           for name, version in re.findall(r'def dependency "([^"]+)" \{\s*str owner = "[^"]*"\s*str version = "([^"]+)"', manifest))
+    dependencies = ''.join('    def dependency "%s" {\n        str owner = "dymokomi"\n        str path = %s\n    }\n' % (name, json.dumps(str(ROOT.parent / name)))
+                           for name in re.findall(r'def dependency "([^"]+)"', manifest))
     (project / 'package.prisma').write_text('#prisma 4.0\ndef package "luced-tests" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "src/main.luc"\n' + dependencies + '}\n')
     (root / 'package.prisma').write_text('#prisma 4.0\ndef package "luced-fixture" {\n    str owner = "dymokomi"\n    str version = "0.0.0"\n    str kind = "tool"\n    str language = "luce"\n    str entry = "main.luc"\n}\n')
     binary = root / ('tests.exe' if os.name == 'nt' else 'tests')
