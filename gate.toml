@@ -1,0 +1,27 @@
+# What the gate runs on each platform (luce-base tools/gate.py, docs/CI.md): bash commands
+# in this checkout, in order, beside its dependencies at main, with LUCE_BASE and LUCE
+# naming the toolchain the gate built.
+tools = ["luce"]
+
+[macos]
+steps = [
+    "python3 tools/build.py",
+    "python3 tests/run.py",
+    # actual Metal output of the editor's views
+    """
+    python3 tools/preview.py --source examples/hello/main.luc
+    python3 tools/preview.py --source src/editor/views.luc --fold --output build/preview-folded.ppm
+    python3 tools/preview.py --source src/editor/views.luc --palette --output build/preview-palette.ppm
+    python3 tools/preview.py --source src/editor/views.luc --context files --output build/preview-context.ppm
+    python3 tools/preview.py --source src/editor/views.luc --hover edit-menu --output build/preview-menu-hover.ppm
+    python3 tools/preview.py --source src/editor/views.luc --hover gutter --output build/preview-gutter-hover.ppm
+    python3 tools/preview.py --source src/editor/views.luc --dock preview --output build/preview-docking.ppm
+    python3 tools/preview.py --tabs --dock merge --output build/preview-tabs.ppm
+    """,
+]
+
+[linux]
+steps = ["python3 tools/build.py", "python3 tests/run.py"]
+
+[windows]
+steps = ["python tools/build.py", "python tests/run.py"]
