@@ -14,7 +14,7 @@ pub func main(arguments: list[str]) -> int!:
     # a scratch project for the editor to open, edit, save, build and run
     let luce = process.variable("LUCE") else "luce"
     let base = process.variable("LUCE_BASE") else "luce-base"
-    let root = paths.join(files.canonical("../.."), "build/tests/editor/fixture")
+    let root = paths.join(files.canonical("."), "build/tests/editor/fixture")
     if files.exists(root):
         files.remove_tree(root)
     files.ensure_directory(root)
