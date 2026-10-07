@@ -1,17 +1,26 @@
+# The editor against temporary files and real compiler processes: open, edit, save,
+# build and run a Luce and a Base program, settings and workspace tabs.
 from workspace.document import Document
 from editor.application import Editor
 from editor.options import Options
 from luce_ui import ui
 import workspace.paths as paths
-from luce_std import files
+from luce_std import files, process
 import thread
 from configuration_tests import configuration
 from workspace_tab_tests import workspace_tabs
 
 pub func main(arguments: list[str]) -> int!:
-    let root = arguments[0]
-    configuration(root, arguments[1], arguments[2])
-    workspace_tabs(root, arguments[1], arguments[2])
+    # a scratch project for the editor to open, edit, save, build and run
+    let luce = process.variable("LUCE") else "luce"
+    let base = process.variable("LUCE_BASE") else "luce-base"
+    let root = paths.join(files.canonical("../.."), "build/tests/editor/fixture")
+    if files.exists(root):
+        files.remove_tree(root)
+    files.ensure_directory(root)
+    files.write_text(paths.join(root, "package.prisma"), "#prisma 4.0\ndef package \"luced-fixture\" {\n    str owner = \"dymokomi\"\n    str version = \"0.0.0\"\n    str kind = \"tool\"\n    str language = \"luce\"\n    str entry = \"main.luc\"\n}\n")
+    configuration(root, luce, base)
+    workspace_tabs(root, luce, base)
     let source = paths.join(root, "main.luc")
     let original = "pub func main(arguments: list[str]) -> int!:\r\n    print(\"hello from luced\")\r\n    return 0\r\n"
     files.write_text(source, original)
@@ -42,7 +51,7 @@ pub func main(arguments: list[str]) -> int!:
     assert(not mixed.dirty())
     mixed.save()
     assert(files.read_text(mixed_path) == "one\r\ntwo\n")
-    let instance = Editor(Options([source, "--config-dir", paths.join(root, "session"), "--luce", arguments[1], "--base", arguments[2]]))
+    let instance = Editor(Options([source, "--config-dir", paths.join(root, "session"), "--luce", luce, "--base", base]))
     let app = instance.app
     let workspace = instance.workspace
     let runner = instance.runner

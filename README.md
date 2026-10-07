@@ -149,7 +149,7 @@ Use `--config-dir DIRECTORY` for an isolated profile; tests and previews do this
 - Base standard library: native text input, clipboard, files and process resources.
 
 ```sh
-python3 tests/run.py
+luc test
 ./build/luced examples/hello/main.luc --smoke
 # macOS: read back the editor's actual Metal frame in an isolated test build
 python3 tools/preview.py --source examples/hello/main.luc
